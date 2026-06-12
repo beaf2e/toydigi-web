@@ -15,6 +15,9 @@
 
   const DEFAULT_SETTINGS = { date: true, sound: true, vibrate: true, mirror: true, mic: true, lofi: 'vintage' };
 
+  // 촬영 비율 — 아이폰 카메라처럼 세로 3:4 (가로:세로)
+  const ASPECT = 3 / 4;
+
   // ----- 상태 -----
   const state = {
     facing: 'environment',
@@ -85,7 +88,10 @@
   let kitKey = null, kit = null; // 캡처/녹화용 오버레이 캐시
   function applyPreset(p) {
     state.preset = p;
-    hudPreset.textContent = p.name;
+    if (hudPreset) {
+      hudPreset.textContent = p.name;
+      hudPreset.classList.remove('show'); void hudPreset.offsetWidth; hudPreset.classList.add('show');
+    }
     applyPreviewTransform();
     kitKey = null;
 
@@ -176,9 +182,8 @@
 
   function computeCrop() {
     const vw = video.videoWidth, vh = video.videoHeight;
-    const ratio = 4 / 3;
-    let cw = vw, ch = vw / ratio;
-    if (ch > vh) { ch = vh; cw = vh * ratio; }
+    let cw = vh * ASPECT, ch = vh;
+    if (cw > vw) { cw = vw; ch = vw / ASPECT; }
     cw /= state.zoom; ch /= state.zoom;
     return { sx: (vw - cw) / 2, sy: (vh - ch) / 2, sw: cw, sh: ch, vw, vh };
   }
@@ -251,10 +256,10 @@
   function capturePhoto() {
     const crop = computeCrop(); if (!crop.vw) return null;
     const p = state.preset; const lf = LOFI[state.settings.lofi];
-    let outW = Math.min(2000, Math.round(crop.sw));
+    let outW = Math.min(1500, Math.round(crop.sw));
     outW = Math.round(outW * (1 - (p.lofi || 0) * 0.4) * lf.res);
-    outW = Math.max(320, outW);
-    const outH = Math.round(outW / (4 / 3));
+    outW = Math.max(300, outW);
+    const outH = Math.round(outW / ASPECT);
 
     const canvas = document.createElement('canvas'); canvas.width = outW; canvas.height = outH;
     const ctx = canvas.getContext('2d');
@@ -303,7 +308,7 @@
     await ensureAudio();
     const crop = computeCrop(); if (!crop.vw) return;
     const lf = LOFI[state.settings.lofi];
-    const h = lf.vh, w = Math.round(h * 4 / 3);
+    const h = lf.vh, w = Math.round(h * ASPECT);
     recordCanvas.width = w; recordCanvas.height = h;
     const rctx = recordCanvas.getContext('2d');
     kitKey = null;
@@ -463,7 +468,7 @@
   // ================= 모드 =================
   function setMode(m) {
     state.mode = m;
-    $$('#modeSeg .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
+    $$('#modeSeg .mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
     shutter.classList.toggle('video', m === 'video');
     buzz(8);
   }
@@ -490,12 +495,14 @@
     await startCamera(); applyPreset(state.preset); buzz(10);
   };
 
-  $('#zoom').oninput = (e) => {
-    state.zoom = parseFloat(e.target.value);
+  $$('#zoomPills button').forEach(b => b.onclick = () => {
+    state.zoom = parseFloat(b.dataset.z);
+    $$('#zoomPills button').forEach(x => x.classList.toggle('active', x === b));
     video.style.transform = (state.facing === 'user' ? 'scaleX(-1) ' : '') + `scale(${state.zoom})`;
-  };
+    buzz(6);
+  });
 
-  $$('#modeSeg .seg-btn').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+  $$('#modeSeg .mode-btn').forEach(b => b.onclick = () => setMode(b.dataset.mode));
 
   $('#settingsBtn').onclick = openSettings;
   $('#settingsClose').onclick = closeSettings;

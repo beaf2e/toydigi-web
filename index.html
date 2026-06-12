@@ -4,43 +4,43 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>ToyDigi</title>
-<meta name="description" content="레트로 토이 + 빈티지 디카 필터 카메라" />
+<meta name="description" content="레트로 디카·필름 필터 카메라" />
 
 <!-- PWA -->
 <link rel="manifest" href="manifest.webmanifest" />
-<meta name="theme-color" content="#0d0f0c" />
+<meta name="theme-color" content="#000000" />
 <link rel="apple-touch-icon" href="icons/icon-180.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="ToyDigi" />
 
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet" />
-
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-<!-- ===== 권한 / 시작 화면 ===== -->
+<!-- ===== 시작 화면 ===== -->
 <div id="start" class="screen">
   <div class="start-card">
-    <div class="logo">ToyDigi</div>
-    <p class="tagline">레트로 토이 · 빈티지 디카</p>
-    <button id="startBtn" class="big-btn">카메라 켜기</button>
-    <p id="startHint" class="hint">카메라 접근을 허용해 주세요</p>
+    <img class="start-icon" src="icons/icon-192.png" alt="" />
+    <h1 class="start-title">ToyDigi</h1>
+    <p class="start-sub">레트로 디카 · 필름 필터 카메라</p>
+    <button id="startBtn" class="btn-filled">카메라 시작</button>
+    <p id="startHint" class="start-hint">카메라 접근을 허용해 주세요</p>
   </div>
 </div>
 
 <!-- ===== 메인 카메라 ===== -->
 <div id="camera" class="screen hidden">
 
-  <!-- 상단 HUD -->
-  <header class="hud-top">
-    <span class="hud-left"><span class="rec-dot"></span>ToyDigi</span>
-    <span id="hudPreset" class="hud-mid">CCD</span>
-    <span class="hud-right"><span id="frameCount">000</span> <span class="batt">▮▮▮</span></span>
+  <!-- 상단 툴바 -->
+  <header class="topbar">
+    <span class="brand">ToyDigi</span>
+    <div id="recBadge" class="rec-badge hidden"><span class="rb-dot"></span><span id="recTime">0:00</span></div>
+    <button id="settingsBtn" class="glass-btn" aria-label="설정">
+      <svg viewBox="0 0 24 24" class="ic"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <span id="frameCount" hidden></span>
   </header>
 
   <!-- 뷰파인더 -->
@@ -51,33 +51,34 @@
       <div class="layer grain"></div>
       <div class="layer scanline"></div>
       <div class="layer vignette"></div>
-      <div class="vf-corner tl"></div><div class="vf-corner tr"></div>
-      <div class="vf-corner bl"></div><div class="vf-corner br"></div>
       <div id="dateStamp" class="date-stamp"></div>
-      <div id="recBadge" class="rec-badge hidden"><span class="rb-dot"></span><span id="recTime">0:00</span></div>
+      <div id="hudPreset" class="filter-toast"></div>
+      <div class="zoom-pills" id="zoomPills">
+        <button data-z="1" class="active">1×</button>
+        <button data-z="2">2×</button>
+        <button data-z="3">3×</button>
+      </div>
       <div id="flash" class="flash"></div>
-      <div id="developing" class="developing hidden">현상중<span class="dots">...</span></div>
+      <div id="developing" class="developing hidden"><span class="spinner"></span></div>
     </div>
   </main>
 
-  <!-- 프리셋 선택 -->
-  <div class="preset-bar" id="presetBar"></div>
+  <!-- 필터 캐러셀 -->
+  <div class="filter-bar" id="presetBar"></div>
 
-  <!-- 모드 + 줌 + 설정 -->
-  <div class="modebar">
-    <div class="seg" id="modeSeg">
-      <button data-mode="photo" class="seg-btn active">PHOTO</button>
-      <button data-mode="video" class="seg-btn">VIDEO</button>
-    </div>
-    <label class="zoom">ZOOM<input id="zoom" type="range" min="1" max="3" step="0.1" value="1" /></label>
-    <button id="settingsBtn" class="icon-btn tiny" title="설정">⚙</button>
+  <!-- 모드 캐러셀 -->
+  <div class="mode-carousel" id="modeSeg">
+    <button data-mode="photo" class="mode-btn active">사진</button>
+    <button data-mode="video" class="mode-btn">비디오</button>
   </div>
 
   <!-- 하단 컨트롤 -->
   <footer class="controls">
-    <button id="flipBtn" class="icon-btn" title="전후면 전환">⟳</button>
-    <button id="shutter" class="shutter" title="촬영"><span></span></button>
-    <button id="galleryBtn" class="icon-btn thumb-btn" title="갤러리"><span id="lastThumb">▣</span></button>
+    <button id="galleryBtn" class="thumb-btn" aria-label="갤러리"><span id="lastThumb"></span></button>
+    <button id="shutter" class="shutter" aria-label="촬영"><span class="shutter-core"></span></button>
+    <button id="flipBtn" class="glass-btn flip" aria-label="전후면 전환">
+      <svg viewBox="0 0 24 24" class="ic"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
+    </button>
   </footer>
 
   <canvas id="recordCanvas" hidden></canvas>
@@ -86,14 +87,19 @@
 <!-- ===== 설정 시트 ===== -->
 <div id="settings" class="sheet hidden">
   <div class="sheet-card">
-    <div class="sheet-head"><span class="logo small">설정</span><button id="settingsClose" class="x-btn">✕</button></div>
-    <div class="set-row"><span>날짜 각인</span><button class="sw" data-set="date"></button></div>
-    <div class="set-row"><span>셔터음</span><button class="sw" data-set="sound"></button></div>
-    <div class="set-row"><span>진동</span><button class="sw" data-set="vibrate"></button></div>
-    <div class="set-row"><span>셀카 좌우반전</span><button class="sw" data-set="mirror"></button></div>
-    <div class="set-row"><span>영상 소리(마이크)</span><button class="sw" data-set="mic"></button></div>
-    <div class="set-col">
-      <span class="set-label">화질 — 낮을수록 빈티지</span>
+    <div class="grabber"></div>
+    <div class="sheet-head"><span class="sheet-title">설정</span><button id="settingsClose" class="done-btn">완료</button></div>
+
+    <div class="group">
+      <div class="set-row"><span>날짜 각인</span><button class="sw" data-set="date"></button></div>
+      <div class="set-row"><span>셔터음</span><button class="sw" data-set="sound"></button></div>
+      <div class="set-row"><span>진동</span><button class="sw" data-set="vibrate"></button></div>
+      <div class="set-row"><span>셀카 좌우반전</span><button class="sw" data-set="mirror"></button></div>
+      <div class="set-row"><span>영상 소리 (마이크)</span><button class="sw" data-set="mic"></button></div>
+    </div>
+
+    <p class="group-label">화질</p>
+    <div class="group pad">
       <div class="seg lofi" id="lofiSeg">
         <button data-lofi="sharp">선명</button>
         <button data-lofi="normal">보통</button>
@@ -101,40 +107,56 @@
         <button data-lofi="trashy">막구짐</button>
       </div>
     </div>
-    <p class="set-hint">사진·영상 모두에 적용돼요. 옛 디카 느낌은 빈티지/막구짐 추천.</p>
+    <p class="group-foot">낮을수록 해상도가 떨어지고 거칠어져 옛 디카 느낌이 납니다. 사진·영상 모두 적용.</p>
   </div>
 </div>
 
 <!-- ===== 촬영 결과 ===== -->
 <div id="result" class="screen hidden">
-  <img id="resultImg" alt="촬영 결과" />
-  <video id="resultVideo" class="hidden" playsinline controls loop></video>
-  <div class="result-actions">
-    <button id="retakeBtn" class="ghost-btn">다시</button>
-    <button id="saveBtn" class="big-btn">저장 / 공유</button>
+  <header class="view-top">
+    <button id="retakeBtn" class="text-btn">
+      <svg viewBox="0 0 24 24" class="ic sm"><path d="M15 18l-6-6 6-6"/></svg>다시
+    </button>
+  </header>
+  <div class="media-wrap">
+    <img id="resultImg" alt="촬영 결과" />
+    <video id="resultVideo" class="hidden" playsinline controls loop></video>
   </div>
+  <footer class="view-bottom">
+    <button id="saveBtn" class="pill-action primary">
+      <svg viewBox="0 0 24 24" class="ic sm"><path d="M12 16V4"/><path d="M8 8l4-4 4 4"/><path d="M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>저장
+    </button>
+  </footer>
 </div>
 
 <!-- ===== 갤러리 ===== -->
 <div id="gallery" class="screen hidden">
   <header class="gallery-head">
-    <button id="galleryClose" class="ghost-btn">← 닫기</button>
-    <span class="logo small">필름롤</span>
-    <button id="clearAll" class="ghost-btn danger">전체삭제</button>
+    <button id="galleryClose" class="text-btn"><svg viewBox="0 0 24 24" class="ic sm"><path d="M15 18l-6-6 6-6"/></svg>카메라</button>
+    <span class="gallery-title">필름롤</span>
+    <button id="clearAll" class="text-btn danger">비우기</button>
   </header>
   <div id="galleryGrid" class="gallery-grid"></div>
-  <p id="galleryEmpty" class="hint center">아직 찍은 사진이 없어요</p>
+  <p id="galleryEmpty" class="empty-note">아직 찍은 사진이 없어요</p>
 </div>
 
 <!-- 사진/영상 크게보기 -->
 <div id="viewer" class="screen hidden">
-  <img id="viewerImg" alt="" />
-  <video id="viewerVideo" class="hidden" playsinline controls loop></video>
-  <div class="result-actions">
-    <button id="viewerClose" class="ghost-btn">← 뒤로</button>
-    <button id="viewerDelete" class="ghost-btn danger">삭제</button>
-    <button id="viewerSave" class="big-btn">저장 / 공유</button>
+  <header class="view-top">
+    <button id="viewerClose" class="text-btn"><svg viewBox="0 0 24 24" class="ic sm"><path d="M15 18l-6-6 6-6"/></svg>필름롤</button>
+    <button id="viewerDelete" class="icon-only danger" aria-label="삭제">
+      <svg viewBox="0 0 24 24" class="ic"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+    </button>
+  </header>
+  <div class="media-wrap">
+    <img id="viewerImg" alt="" />
+    <video id="viewerVideo" class="hidden" playsinline controls loop></video>
   </div>
+  <footer class="view-bottom">
+    <button id="viewerSave" class="pill-action primary">
+      <svg viewBox="0 0 24 24" class="ic sm"><path d="M12 16V4"/><path d="M8 8l4-4 4 4"/><path d="M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>저장
+    </button>
+  </footer>
 </div>
 
 <script src="presets.js"></script>
