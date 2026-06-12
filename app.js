@@ -99,6 +99,7 @@
     vf.style.setProperty('--vignette', p.vignette);
     vf.style.setProperty('--grain-opacity', p.grain);
     vf.style.setProperty('--scanline-opacity', p.scanline);
+    vf.style.setProperty('--leak-alpha', p.leak || 0);
     if (p.tint) {
       vf.style.setProperty('--tint-color', p.tint.color);
       vf.style.setProperty('--tint-alpha', p.tint.alpha);
@@ -230,10 +231,46 @@
       ctx.globalAlpha = Math.min(1, p.tint.alpha * 2.2);
       ctx.fillStyle = p.tint.color; ctx.fillRect(0, 0, w, h); ctx.restore();
     }
-    if (bloom && p.bloom > 0 && 'filter' in ctx) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = p.bloom * 0.5;
-      ctx.filter = 'brightness(1.6) blur(6px)'; ctx.drawImage(ctx.canvas, 0, 0, w, h); ctx.restore();
+    if (bloom && 'filter' in ctx) {
+      if (p.bloom > 0) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = p.bloom * 0.5;
+        ctx.filter = 'brightness(1.6) blur(6px)'; ctx.drawImage(ctx.canvas, 0, 0, w, h); ctx.restore();
+      }
+      if (p.halation > 0) { // 하이라이트 둘레 따뜻한 글로우
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = p.halation * 0.6;
+        ctx.filter = 'brightness(1.7) blur(9px) sepia(0.7) saturate(2.2) hue-rotate(-12deg)';
+        ctx.drawImage(ctx.canvas, 0, 0, w, h); ctx.restore();
+      }
+    }
+    // 색수차 (픽셀 단위 — 캡처 전용, 영상 루프에선 생략)
+    if (bloom && p.chroma > 0) {
+      const d = Math.max(1, Math.round(w * 0.0035 * p.chroma * 3));
+      try {
+        const src = ctx.getImageData(0, 0, w, h), out = ctx.createImageData(w, h);
+        const s = src.data, o = out.data;
+        for (let y = 0; y < h; y++) {
+          const row = y * w;
+          for (let x = 0; x < w; x++) {
+            const i = (row + x) * 4;
+            o[i] = s[(row + Math.min(w - 1, x + d)) * 4];
+            o[i + 1] = s[i + 1];
+            o[i + 2] = s[(row + Math.max(0, x - d)) * 4 + 2];
+            o[i + 3] = s[i + 3];
+          }
+        }
+        ctx.putImageData(out, 0, 0);
+      } catch (e) {}
+    }
+    // 라이트릭 (사진·영상 공통)
+    if (p.leak > 0) {
+      const lx = w * 0.9, ly = h * 0.12;
+      const g = ctx.createRadialGradient(lx, ly, 0, lx, ly, Math.max(w, h) * 0.65);
+      g.addColorStop(0, `rgba(255,135,45,${0.55 * p.leak})`);
+      g.addColorStop(0.4, `rgba(255,60,80,${0.22 * p.leak})`);
+      g.addColorStop(1, 'rgba(255,0,0,0)');
+      ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); ctx.restore();
     }
     const k = getKit(p, w, h, grainMul);
     if (k.scan) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(k.scan, 0, 0); ctx.restore(); }
@@ -469,6 +506,7 @@
   function setMode(m) {
     state.mode = m;
     $$('#modeSeg .mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
+    $('#modeSeg').classList.toggle('video', m === 'video');
     shutter.classList.toggle('video', m === 'video');
     buzz(8);
   }
@@ -544,8 +582,14 @@
     else if (!$('#camera').classList.contains('hidden') && !state.stream) startCamera();
   });
 
+  // 서비스워커: 배포 환경에서만 등록. localhost(개발)에선 캐시 꼬임 방지 위해 기존 등록 해제
+  const isLocal = ['localhost', '127.0.0.1', '[::1]', ''].includes(location.hostname);
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    if (isLocal) {
+      navigator.serviceWorker.getRegistrations?.().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
+    } else {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    }
   }
 
   // ================= 셀프테스트 (?selftest) =================
