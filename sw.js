@@ -1,5 +1,5 @@
 /* ToyDigi 서비스워커 — 오프라인 캐시 (앱 셸) */
-const CACHE = 'toydigi-v3';
+const CACHE = 'toydigi-v4';
 const ASSETS = [
   './',
   './index.html',

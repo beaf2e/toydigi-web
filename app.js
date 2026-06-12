@@ -16,8 +16,9 @@
 
   const DEFAULT_SETTINGS = { date: true, sound: true, vibrate: true, mirror: true, mic: true, lofi: 'vintage' };
 
-  // 촬영 비율 — 아이폰 카메라처럼 세로 3:4 (가로:세로)
-  const ASPECT = 3 / 4;
+  // 촬영 비율 — 세로 3:4, 화면을 가로로 돌리면 가로 4:3 (가로:세로 = w/h)
+  function aspectR() { return state.landscape ? 4 / 3 : 3 / 4; }
+  const ZMIN = 1, ZMAX = 10, ZSP = 42; // 줌 범위 + 다이얼 1× 당 픽셀
 
   // ----- 상태 -----
   const state = {
@@ -26,6 +27,7 @@
     audioStream: null,
     preset: PRESETS.find(p => p.id === 'ccd') || PRESETS[0],
     mode: 'photo',
+    landscape: false,
     zoom: 1,
     frame: 0,
     lastBlob: null, lastKind: 'photo', lastBlobUrl: null,
@@ -83,6 +85,62 @@
     const soft = lf.blur ? ` blur(${lf.blur}px)` : '';
     video.style.filter = state.preset.css + soft;
     video.style.transform = (state.facing === 'user' ? 'scaleX(-1) ' : '') + `scale(${state.zoom})`;
+  }
+
+  // ================= 줌 (핀치 + 반원 다이얼) =================
+  let zoomArcTimer = 0;
+  const zoomTickVals = [];
+  for (let v = ZMIN; v <= ZMAX + 0.001; v += 0.5) zoomTickVals.push(Math.round(v * 10) / 10);
+  const fmtZoom = (z) => (Math.round(z * 10) / 10).toString().replace(/\.0$/, '') + '×';
+
+  function buildZoomArc() {
+    const dial = $('#zaDial'); if (!dial) return;
+    dial.innerHTML = '';
+    zoomTickVals.forEach(v => {
+      const major = Math.abs(v - Math.round(v)) < 0.01;
+      const t = document.createElement('div');
+      t.className = 'za-tick' + (major ? ' major' : '');
+      t.dataset.v = v;
+      if (major && [1, 2, 3, 5, 10].includes(v)) {
+        const l = document.createElement('span'); l.className = 'za-label'; l.textContent = v + '×'; t.appendChild(l);
+      }
+      dial.appendChild(t);
+    });
+  }
+  function renderZoomArc() {
+    const cx = 140;
+    $$('#zaDial .za-tick').forEach(t => {
+      const v = parseFloat(t.dataset.v);
+      const dx = (v - state.zoom) * ZSP;
+      if (Math.abs(dx) > cx) { t.style.display = 'none'; return; }
+      t.style.display = 'block';
+      const y = (dx / cx) * (dx / cx) * 22;
+      t.style.transform = `translate(${dx}px,${y}px) rotate(${(dx / cx) * 14}deg)`;
+      t.classList.toggle('on', Math.abs(v - state.zoom) < 0.26);
+    });
+    const zv = $('#zaValue'); if (zv) zv.textContent = fmtZoom(state.zoom);
+    const zq = $('#zoomQuick'); if (zq) zq.textContent = fmtZoom(state.zoom);
+  }
+  function showZoomArc() {
+    const a = $('#zoomArc'); if (!a) return;
+    a.classList.remove('hidden');
+    clearTimeout(zoomArcTimer);
+    zoomArcTimer = setTimeout(() => a.classList.add('hidden'), 1400);
+  }
+  function setZoom(z, arc = true) {
+    state.zoom = Math.min(ZMAX, Math.max(ZMIN, z));
+    applyPreviewTransform();
+    renderZoomArc();
+    if (arc) showZoomArc();
+  }
+
+  function updateOrientation() {
+    const ls = window.innerWidth > window.innerHeight;
+    if (ls !== state.landscape) {
+      state.landscape = ls;
+      document.body.classList.toggle('landscape', ls);
+      kitKey = null;
+    }
   }
 
   // ================= 프리셋 =================
@@ -183,11 +241,11 @@
   }
 
   function computeCrop() {
-    const vw = video.videoWidth, vh = video.videoHeight;
-    let cw = vh * ASPECT, ch = vh;
-    if (cw > vw) { cw = vw; ch = vw / ASPECT; }
+    const vw = video.videoWidth, vh = video.videoHeight, R = aspectR();
+    let cw, ch;
+    if (vw / vh > R) { ch = vh; cw = vh * R; } else { cw = vw; ch = vw / R; }
     cw /= state.zoom; ch /= state.zoom;
-    return { sx: (vw - cw) / 2, sy: (vh - ch) / 2, sw: cw, sh: ch, vw, vh };
+    return { sx: (vw - cw) / 2, sy: (vh - ch) / 2, sw: cw, sh: ch, vw, vh, R };
   }
 
   // 프리셋·크기별 오버레이(비네팅/스캔라인/그레인) 캐시
@@ -293,11 +351,12 @@
   // ================= 사진 캡처 =================
   function capturePhoto() {
     const crop = computeCrop(); if (!crop.vw) return null;
-    const p = state.preset; const lf = LOFI[state.settings.lofi];
-    let outW = Math.min(1500, Math.round(crop.sw));
-    outW = Math.round(outW * (1 - (p.lofi || 0) * 0.4) * lf.res);
-    outW = Math.max(300, outW);
-    const outH = Math.round(outW / ASPECT);
+    const p = state.preset, lf = LOFI[state.settings.lofi], R = crop.R;
+    let shortPx = Math.round(Math.min(crop.sw, crop.sh));
+    shortPx = Math.round(Math.min(1200, shortPx) * (1 - (p.lofi || 0) * 0.4) * lf.res);
+    shortPx = Math.max(240, shortPx);
+    const outW = R >= 1 ? Math.round(shortPx * R) : shortPx;
+    const outH = R >= 1 ? shortPx : Math.round(shortPx / R);
 
     const canvas = document.createElement('canvas'); canvas.width = outW; canvas.height = outH;
     const ctx = canvas.getContext('2d');
@@ -345,8 +404,9 @@
     if (!VIDEO_OK) { alert('이 브라우저는 영상 녹화를 지원하지 않아요.'); return; }
     await ensureAudio();
     const crop = computeCrop(); if (!crop.vw) return;
-    const lf = LOFI[state.settings.lofi];
-    const h = lf.vh, w = Math.round(h * ASPECT);
+    const lf = LOFI[state.settings.lofi], R = aspectR();
+    const long = lf.vh, short = Math.round(long * 3 / 4);
+    const w = R >= 1 ? long : short, h = R >= 1 ? short : long;
     recordCanvas.width = w; recordCanvas.height = h;
     const rctx = recordCanvas.getContext('2d');
     kitKey = null;
@@ -518,7 +578,10 @@
     const ok = await startCamera();
     if (!ok) { $('#startHint').textContent = '카메라를 켤 수 없어요. 권한 또는 HTTPS를 확인하세요.'; return; }
     showScreen('camera');
+    updateOrientation();
+    buildZoomArc();
     applyPreset(state.preset);
+    setZoom(1, false);
     if (!VIDEO_OK) $('#modeSeg').querySelector('[data-mode=video]').style.display = 'none';
     setInterval(updateDateStamp, 30000);
   };
@@ -534,12 +597,36 @@
     await startCamera(); applyPreset(state.preset); buzz(10);
   };
 
-  $$('#zoomPills button').forEach(b => b.onclick = () => {
-    state.zoom = parseFloat(b.dataset.z);
-    $$('#zoomPills button').forEach(x => x.classList.toggle('active', x === b));
-    video.style.transform = (state.facing === 'user' ? 'scaleX(-1) ' : '') + `scale(${state.zoom})`;
-    buzz(6);
+  // 핀치 줌 (두 손가락)
+  const ptrs = new Map();
+  let pinchD0 = 0, pinchZ0 = 1;
+  const dist2 = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  viewfinder.addEventListener('pointerdown', (e) => {
+    ptrs.set(e.pointerId, e);
+    if (ptrs.size === 2) { const p = [...ptrs.values()]; pinchD0 = dist2(p[0], p[1]); pinchZ0 = state.zoom; }
   });
+  viewfinder.addEventListener('pointermove', (e) => {
+    if (!ptrs.has(e.pointerId)) return;
+    ptrs.set(e.pointerId, e);
+    if (ptrs.size === 2 && pinchD0) { const p = [...ptrs.values()]; setZoom(pinchZ0 * dist2(p[0], p[1]) / pinchD0); }
+  });
+  const ptrUp = (e) => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinchD0 = 0; };
+  viewfinder.addEventListener('pointerup', ptrUp);
+  viewfinder.addEventListener('pointercancel', ptrUp);
+  viewfinder.addEventListener('wheel', (e) => { e.preventDefault(); setZoom(state.zoom * (e.deltaY < 0 ? 1.08 : 0.926)); }, { passive: false });
+
+  // 줌 다이얼 드래그
+  const arcEl = $('#zoomArc');
+  let arcX0 = 0, arcZ0 = 1, arcDrag = false;
+  arcEl.addEventListener('pointerdown', (e) => { arcDrag = true; arcX0 = e.clientX; arcZ0 = state.zoom; arcEl.setPointerCapture(e.pointerId); });
+  arcEl.addEventListener('pointermove', (e) => { if (arcDrag) setZoom(arcZ0 - (e.clientX - arcX0) / ZSP); });
+  arcEl.addEventListener('pointerup', () => { arcDrag = false; });
+
+  // 줌 퀵 버튼: 1→2→5→10→1
+  $('#zoomQuick').onclick = () => { const stops = [1, 2, 5, 10]; setZoom(stops.find(s => s > state.zoom + 0.05) ?? 1); buzz(8); };
+
+  window.addEventListener('resize', updateOrientation);
+  window.addEventListener('orientationchange', () => setTimeout(updateOrientation, 250));
 
   $$('#modeSeg .mode-btn').forEach(b => b.onclick = () => setMode(b.dataset.mode));
 
@@ -610,7 +697,8 @@
       };
       draw(); video.srcObject = tc.captureStream(15); await video.play().catch(() => {}); draw();
       log.push('video=' + video.videoWidth + 'x' + video.videoHeight);
-      showScreen('camera'); applyPreset(state.preset);
+      showScreen('camera'); updateOrientation(); buildZoomArc(); applyPreset(state.preset);
+      log.push('landscape=' + state.landscape + ' aspectR=' + aspectR().toFixed(3));
       let ok = 0; for (const p of PRESETS) { applyPreset(p); const c = capturePhoto(); if (c && c.width) ok++; else log.push('photoFail=' + p.id); }
       log.push('photos=' + ok + '/' + PRESETS.length);
       log.push('videoSupport=' + VIDEO_OK + ' mime=' + (VIDEO_OK ? pickMime() : '-'));
@@ -630,7 +718,7 @@
         } catch (e) { log.push('recErr:' + (e && e.message)); }
       }
       const c = capturePhoto();
-      if (c) { const px = c.getContext('2d').getImageData(c.width >> 1, c.height >> 1, 1, 1).data; log.push('px=' + px.join(',')); }
+      if (c) { log.push('out=' + c.width + 'x' + c.height); const px = c.getContext('2d').getImageData(c.width >> 1, c.height >> 1, 1, 1).data; log.push('px=' + px.join(',')); }
     } catch (e) { log.push('THROW:' + (e && e.message)); }
     document.title = 'SELFTEST ' + JSON.stringify(log);
     const el = document.createElement('pre'); el.id = 'selftest-result'; el.textContent = JSON.stringify(log, null, 1);

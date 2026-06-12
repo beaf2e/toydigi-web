@@ -49,11 +49,15 @@ button{font-family:inherit;color:inherit}
 
 /* ---------- 카메라 레이아웃 ---------- */
 #camera{position:relative;background:#000}
-.viewfinder-wrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;padding:0}
-.viewfinder{position:relative;width:100%;max-width:480px;aspect-ratio:3/4;max-height:100%;
-  background:#000;overflow:hidden;
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:0 0 auto;
+  padding:calc(var(--safe-top) + 8px) 16px 4px;position:relative;z-index:6}
+.tb-side{width:44px;height:44px;flex:0 0 auto}
+.stage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-height:0;padding:0}
+.viewfinder{position:relative;width:100%;max-width:min(480px,100%);aspect-ratio:3/4;max-height:100%;
+  background:#000;overflow:hidden;touch-action:none;
   --vignette:.3;--grain-opacity:.1;--scanline-opacity:0;--leak-alpha:0;
   --tint-color:#000;--tint-alpha:0;--tint-blend:soft-light}
+body.landscape .viewfinder{aspect-ratio:4/3}
 .viewfinder.polaroid{background:#f6f4ec;padding:14px 14px 44px}
 #video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:filter .25s}
 .viewfinder.polaroid #video{position:relative;border-radius:2px}
@@ -85,25 +89,47 @@ button{font-family:inherit;color:inherit}
 .spinner{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* ---------- 상단 플로팅 글래스 ---------- */
-.float-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:flex-end;
-  padding:calc(var(--safe-top) + 10px) 16px 0;z-index:6;pointer-events:none}
-.float-top>*{pointer-events:auto}
+/* ---------- 상단 바 ---------- */
 .lg-btn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:#fff;cursor:pointer;border:none}
 .lg-btn .ic{width:22px;height:22px}
-.rec-badge{position:absolute;left:50%;top:calc(var(--safe-top) + 12px);transform:translateX(-50%);
-  display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:20px;
+.rec-badge{display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:20px;
   font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:#fff}
 .rb-dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:pulse 1.2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
 
-/* ---------- 하단 플로팅 글래스 독 ---------- */
-.dock{position:absolute;left:0;right:0;bottom:0;z-index:6;display:flex;flex-direction:column;
-  align-items:center;gap:12px;padding:0 14px calc(var(--safe-bot) + 16px)}
-.zoom-pills{display:inline-flex;gap:2px;padding:4px;border-radius:24px}
-.zoom-pills button{width:34px;height:34px;border-radius:50%;background:transparent;border:none;
-  color:#fff;font-size:12px;font-weight:600;cursor:pointer;position:relative;z-index:1}
-.zoom-pills button.active{background:rgba(255,255,255,.22);color:var(--yellow);font-size:13px}
+/* ---------- 줌 다이얼(반원) ---------- */
+.zoom-arc{position:absolute;left:50%;bottom:16px;width:280px;height:64px;transform:translateX(-50%);
+  pointer-events:auto;z-index:7;transition:opacity .2s}
+.zoom-arc.hidden{display:block!important;opacity:0;pointer-events:none}
+.za-dial{position:absolute;inset:0}
+.za-tick{position:absolute;left:140px;top:16px;width:2px;height:11px;margin-left:-1px;border-radius:1px;
+  background:rgba(255,255,255,.55);transform-origin:50% 0}
+.za-tick.major{height:16px;background:rgba(255,255,255,.9)}
+.za-tick.on{background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
+.za-label{position:absolute;top:18px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:600;
+  color:rgba(255,255,255,.85);white-space:nowrap}
+.za-tick.on .za-label{color:var(--yellow)}
+.za-pointer{position:absolute;left:50%;top:4px;transform:translateX(-50%);width:0;height:0;
+  border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--yellow)}
+.za-value{position:absolute;left:50%;top:-22px;transform:translateX(-50%);font-size:17px;font-weight:700;
+  color:var(--yellow);text-shadow:0 1px 4px rgba(0,0,0,.6)}
+
+/* ---------- 하단 컨트롤 독 (인플로우) ---------- */
+.dock{position:relative;z-index:6;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding:8px 14px calc(var(--safe-bot) + 14px)}
+.dock-mid{display:flex;align-items:center;gap:12px}
+.zoom-quick{min-width:46px;height:34px;border-radius:18px;padding:0 12px;color:var(--yellow);
+  font-size:14px;font-weight:700;cursor:pointer;display:grid;place-items:center}
+
+/* 가로 모드: 프리뷰 높이를 뷰포트 기준 고정값으로(순환 의존 방지), 컨트롤 컴팩트 */
+body.landscape .viewfinder{aspect-ratio:4/3;width:auto;max-width:96vw;
+  height:calc(100dvh - 220px - var(--safe-top) - var(--safe-bot))}
+body.landscape .topbar{padding-top:calc(var(--safe-top) + 4px);padding-bottom:0}
+body.landscape .dock{gap:6px;padding:4px 14px calc(var(--safe-bot) + 8px)}
+body.landscape .filter-bar{padding:0 6px}
+body.landscape .controls{padding-top:0}
+body.landscape .shutter{width:60px;height:60px}
+body.landscape .shutter-core{width:48px;height:48px}
 
 .filter-bar{display:flex;gap:8px;overflow-x:auto;max-width:100%;padding:2px 6px;scrollbar-width:none}
 .filter-bar::-webkit-scrollbar{display:none}

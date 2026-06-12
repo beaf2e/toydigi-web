@@ -33,8 +33,18 @@
 <!-- ===== 메인 카메라 ===== -->
 <div id="camera" class="screen hidden">
 
-  <!-- 뷰파인더 -->
-  <main class="viewfinder-wrap">
+  <!-- 상단 바 (인플로우 · 프리뷰와 겹치지 않음) -->
+  <header class="topbar">
+    <span class="tb-side"></span>
+    <div id="recBadge" class="lg rec-badge hidden"><span class="rb-dot"></span><span id="recTime">0:00</span></div>
+    <button id="settingsBtn" class="lg lg-btn tb-side" aria-label="설정">
+      <svg viewBox="0 0 24 24" class="ic"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <span id="frameCount" hidden></span>
+  </header>
+
+  <!-- 프리뷰 무대 -->
+  <main class="stage">
     <div id="viewfinder" class="viewfinder">
       <video id="video" playsinline autoplay muted></video>
       <div class="layer tint"></div>
@@ -47,33 +57,25 @@
       <div id="flash" class="flash"></div>
       <div id="developing" class="developing hidden"><span class="spinner"></span></div>
     </div>
+    <!-- 줌 다이얼(반원) — 줌 조작 시 표시 -->
+    <div id="zoomArc" class="zoom-arc hidden">
+      <div class="za-value" id="zaValue">1×</div>
+      <div class="za-dial" id="zaDial"></div>
+      <div class="za-pointer"></div>
+    </div>
   </main>
 
-  <!-- 상단 플로팅 글래스 -->
-  <header class="float-top">
-    <button id="settingsBtn" class="lg lg-btn" aria-label="설정">
-      <svg viewBox="0 0 24 24" class="ic"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-    </button>
-    <div id="recBadge" class="lg rec-badge hidden"><span class="rb-dot"></span><span id="recTime">0:00</span></div>
-    <span id="frameCount" hidden></span>
-  </header>
-
-  <!-- 하단 플로팅 글래스 컨트롤 -->
+  <!-- 하단 컨트롤 독 (인플로우) -->
   <div class="dock">
-    <div class="zoom-pills lg" id="zoomPills">
-      <button data-z="1" class="active">1×</button>
-      <button data-z="2">2×</button>
-      <button data-z="3">3×</button>
-    </div>
-
     <div class="filter-bar" id="presetBar"></div>
-
-    <div class="mode-capsule lg" id="modeSeg">
-      <span class="mode-ind"></span>
-      <button data-mode="photo" class="mode-btn active">사진</button>
-      <button data-mode="video" class="mode-btn">비디오</button>
+    <div class="dock-mid">
+      <div class="mode-capsule lg" id="modeSeg">
+        <span class="mode-ind"></span>
+        <button data-mode="photo" class="mode-btn active">사진</button>
+        <button data-mode="video" class="mode-btn">비디오</button>
+      </div>
+      <button id="zoomQuick" class="lg zoom-quick">1×</button>
     </div>
-
     <div class="controls">
       <button id="galleryBtn" class="thumb-btn lg" aria-label="갤러리"><span id="lastThumb"></span></button>
       <button id="shutter" class="shutter" aria-label="촬영"><span class="shutter-core"></span></button>
