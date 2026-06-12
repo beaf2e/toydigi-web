@@ -54,6 +54,7 @@
       <div class="vf-corner tl"></div><div class="vf-corner tr"></div>
       <div class="vf-corner bl"></div><div class="vf-corner br"></div>
       <div id="dateStamp" class="date-stamp"></div>
+      <div id="recBadge" class="rec-badge hidden"><span class="rb-dot"></span><span id="recTime">0:00</span></div>
       <div id="flash" class="flash"></div>
       <div id="developing" class="developing hidden">현상중<span class="dots">...</span></div>
     </div>
@@ -62,6 +63,16 @@
   <!-- 프리셋 선택 -->
   <div class="preset-bar" id="presetBar"></div>
 
+  <!-- 모드 + 줌 + 설정 -->
+  <div class="modebar">
+    <div class="seg" id="modeSeg">
+      <button data-mode="photo" class="seg-btn active">PHOTO</button>
+      <button data-mode="video" class="seg-btn">VIDEO</button>
+    </div>
+    <label class="zoom">ZOOM<input id="zoom" type="range" min="1" max="3" step="0.1" value="1" /></label>
+    <button id="settingsBtn" class="icon-btn tiny" title="설정">⚙</button>
+  </div>
+
   <!-- 하단 컨트롤 -->
   <footer class="controls">
     <button id="flipBtn" class="icon-btn" title="전후면 전환">⟳</button>
@@ -69,19 +80,35 @@
     <button id="galleryBtn" class="icon-btn thumb-btn" title="갤러리"><span id="lastThumb">▣</span></button>
   </footer>
 
-  <!-- 보조 토글 -->
-  <div class="toggles">
-    <button id="dateToggle" class="toggle">DATE</button>
-    <button id="soundToggle" class="toggle on">SOUND</button>
-    <label class="zoom">
-      ZOOM <input id="zoom" type="range" min="1" max="3" step="0.1" value="1" />
-    </label>
+  <canvas id="recordCanvas" hidden></canvas>
+</div>
+
+<!-- ===== 설정 시트 ===== -->
+<div id="settings" class="sheet hidden">
+  <div class="sheet-card">
+    <div class="sheet-head"><span class="logo small">설정</span><button id="settingsClose" class="x-btn">✕</button></div>
+    <div class="set-row"><span>날짜 각인</span><button class="sw" data-set="date"></button></div>
+    <div class="set-row"><span>셔터음</span><button class="sw" data-set="sound"></button></div>
+    <div class="set-row"><span>진동</span><button class="sw" data-set="vibrate"></button></div>
+    <div class="set-row"><span>셀카 좌우반전</span><button class="sw" data-set="mirror"></button></div>
+    <div class="set-row"><span>영상 소리(마이크)</span><button class="sw" data-set="mic"></button></div>
+    <div class="set-col">
+      <span class="set-label">화질 — 낮을수록 빈티지</span>
+      <div class="seg lofi" id="lofiSeg">
+        <button data-lofi="sharp">선명</button>
+        <button data-lofi="normal">보통</button>
+        <button data-lofi="vintage">빈티지</button>
+        <button data-lofi="trashy">막구짐</button>
+      </div>
+    </div>
+    <p class="set-hint">사진·영상 모두에 적용돼요. 옛 디카 느낌은 빈티지/막구짐 추천.</p>
   </div>
 </div>
 
 <!-- ===== 촬영 결과 ===== -->
 <div id="result" class="screen hidden">
   <img id="resultImg" alt="촬영 결과" />
+  <video id="resultVideo" class="hidden" playsinline controls loop></video>
   <div class="result-actions">
     <button id="retakeBtn" class="ghost-btn">다시</button>
     <button id="saveBtn" class="big-btn">저장 / 공유</button>
@@ -99,9 +126,10 @@
   <p id="galleryEmpty" class="hint center">아직 찍은 사진이 없어요</p>
 </div>
 
-<!-- 사진 크게보기 -->
+<!-- 사진/영상 크게보기 -->
 <div id="viewer" class="screen hidden">
   <img id="viewerImg" alt="" />
+  <video id="viewerVideo" class="hidden" playsinline controls loop></video>
   <div class="result-actions">
     <button id="viewerClose" class="ghost-btn">← 뒤로</button>
     <button id="viewerDelete" class="ghost-btn danger">삭제</button>
