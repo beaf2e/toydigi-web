@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>ToyDigi</title>
+<meta name="description" content="레트로 토이 + 빈티지 디카 필터 카메라" />
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#0d0f0c" />
+<link rel="apple-touch-icon" href="icons/icon-180.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="ToyDigi" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ===== 권한 / 시작 화면 ===== -->
+<div id="start" class="screen">
+  <div class="start-card">
+    <div class="logo">ToyDigi</div>
+    <p class="tagline">레트로 토이 · 빈티지 디카</p>
+    <button id="startBtn" class="big-btn">카메라 켜기</button>
+    <p id="startHint" class="hint">카메라 접근을 허용해 주세요</p>
+  </div>
+</div>
+
+<!-- ===== 메인 카메라 ===== -->
+<div id="camera" class="screen hidden">
+
+  <!-- 상단 HUD -->
+  <header class="hud-top">
+    <span class="hud-left"><span class="rec-dot"></span>ToyDigi</span>
+    <span id="hudPreset" class="hud-mid">CCD</span>
+    <span class="hud-right"><span id="frameCount">000</span> <span class="batt">▮▮▮</span></span>
+  </header>
+
+  <!-- 뷰파인더 -->
+  <main class="viewfinder-wrap">
+    <div id="viewfinder" class="viewfinder">
+      <video id="video" playsinline autoplay muted></video>
+      <div class="layer tint"></div>
+      <div class="layer grain"></div>
+      <div class="layer scanline"></div>
+      <div class="layer vignette"></div>
+      <div class="vf-corner tl"></div><div class="vf-corner tr"></div>
+      <div class="vf-corner bl"></div><div class="vf-corner br"></div>
+      <div id="dateStamp" class="date-stamp"></div>
+      <div id="flash" class="flash"></div>
+      <div id="developing" class="developing hidden">현상중<span class="dots">...</span></div>
+    </div>
+  </main>
+
+  <!-- 프리셋 선택 -->
+  <div class="preset-bar" id="presetBar"></div>
+
+  <!-- 하단 컨트롤 -->
+  <footer class="controls">
+    <button id="flipBtn" class="icon-btn" title="전후면 전환">⟳</button>
+    <button id="shutter" class="shutter" title="촬영"><span></span></button>
+    <button id="galleryBtn" class="icon-btn thumb-btn" title="갤러리"><span id="lastThumb">▣</span></button>
+  </footer>
+
+  <!-- 보조 토글 -->
+  <div class="toggles">
+    <button id="dateToggle" class="toggle">DATE</button>
+    <button id="soundToggle" class="toggle on">SOUND</button>
+    <label class="zoom">
+      ZOOM <input id="zoom" type="range" min="1" max="3" step="0.1" value="1" />
+    </label>
+  </div>
+</div>
+
+<!-- ===== 촬영 결과 ===== -->
+<div id="result" class="screen hidden">
+  <img id="resultImg" alt="촬영 결과" />
+  <div class="result-actions">
+    <button id="retakeBtn" class="ghost-btn">다시</button>
+    <button id="saveBtn" class="big-btn">저장 / 공유</button>
+  </div>
+</div>
+
+<!-- ===== 갤러리 ===== -->
+<div id="gallery" class="screen hidden">
+  <header class="gallery-head">
+    <button id="galleryClose" class="ghost-btn">← 닫기</button>
+    <span class="logo small">필름롤</span>
+    <button id="clearAll" class="ghost-btn danger">전체삭제</button>
+  </header>
+  <div id="galleryGrid" class="gallery-grid"></div>
+  <p id="galleryEmpty" class="hint center">아직 찍은 사진이 없어요</p>
+</div>
+
+<!-- 사진 크게보기 -->
+<div id="viewer" class="screen hidden">
+  <img id="viewerImg" alt="" />
+  <div class="result-actions">
+    <button id="viewerClose" class="ghost-btn">← 뒤로</button>
+    <button id="viewerDelete" class="ghost-btn danger">삭제</button>
+    <button id="viewerSave" class="big-btn">저장 / 공유</button>
+  </div>
+</div>
+
+<script src="presets.js"></script>
+<script src="db.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
