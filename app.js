@@ -11,6 +11,7 @@
     normal:  { res: 0.8,  grain: 1.0, vh: 600, fps: 30, bitrate: 3_500_000, blur: 0,    label: '보통' },
     vintage: { res: 0.55, grain: 1.4, vh: 480, fps: 30, bitrate: 2_000_000, blur: 0.4,  label: '빈티지' },
     trashy:  { res: 0.4,  grain: 1.9, vh: 360, fps: 24, bitrate: 1_000_000, blur: 0.9,  label: '막구짐' },
+    qvga:    { res: 0.3,  grain: 2.2, vh: 320, fps: 20, bitrate: 700_000,   blur: 1.2,  label: 'QVGA' }, // 영상 240×320(세로 QVGA = 320×240 회전)
   };
 
   const DEFAULT_SETTINGS = { date: true, sound: true, vibrate: true, mirror: true, mic: true, lofi: 'vintage' };
