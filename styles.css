@@ -48,7 +48,7 @@ button{font-family:inherit;color:inherit}
 .start-hint{font-size:13px;color:var(--label3);margin-top:18px}
 
 /* ---------- 카메라 레이아웃 ---------- */
-#camera{position:relative;background:#000}
+#camera{background:#000;overflow:hidden}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:0 0 auto;
   padding:calc(var(--safe-top) + 8px) 16px 4px;position:relative;z-index:6}
 .tb-side{width:44px;height:44px;flex:0 0 auto}
@@ -120,9 +120,22 @@ button{font-family:inherit;color:inherit}
 .zoom-quick{min-width:46px;height:34px;border-radius:18px;padding:0 12px;color:var(--yellow);
   font-size:14px;font-weight:700;cursor:pointer;display:grid;place-items:center}
 
-/* 가로 모드: 레이아웃·버튼은 그대로, 프리뷰만 남는 공간에 맞춰 JS(fitViewfinder)가 4:3로 크기 지정 */
+/* 가로 모드: 버튼 크기 그대로, 오른쪽 세로줄로. [프리뷰 | 필터세로 | 컨트롤세로], 프리뷰 크게 */
+body.landscape #camera{flex-direction:row}
+body.landscape .topbar{position:absolute;top:calc(var(--safe-top) + 8px);right:14px;left:auto;width:auto;padding:0;z-index:8}
+body.landscape .topbar .tb-side:first-child{display:none}
+body.landscape .rec-badge{position:absolute;top:calc(var(--safe-top) + 10px);left:14px}
+body.landscape .stage{order:0;height:100%}
+body.landscape .filter-bar{order:1;flex-direction:column;flex-wrap:nowrap;overflow-y:auto;overflow-x:hidden;
+  width:84px;height:100%;padding:calc(var(--safe-top) + 14px) 7px calc(var(--safe-bot) + 12px);gap:7px}
+body.landscape .filter-bar .preset{width:100%}
+body.landscape .filter-bar .preset .pn{display:block;text-align:center;padding:7px 4px}
+body.landscape .dock{order:2;flex-direction:column;width:222px;height:100%;justify-content:center;gap:18px;
+  padding:calc(var(--safe-top) + 12px) 8px calc(var(--safe-bot) + 12px)}
+body.landscape .dock-mid{flex-direction:column;gap:10px}
+body.landscape .controls{width:100%;max-width:none;padding:0;gap:10px;justify-content:center}
 
-.filter-bar{display:flex;gap:8px;overflow-x:auto;max-width:100%;padding:2px 6px;scrollbar-width:none}
+.filter-bar{display:flex;flex:0 0 auto;gap:8px;overflow-x:auto;max-width:100%;padding:6px 10px;scrollbar-width:none}
 .filter-bar::-webkit-scrollbar{display:none}
 .preset{flex:0 0 auto;background:none;border:none;padding:0;cursor:pointer}
 .preset .pf{display:none}

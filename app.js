@@ -137,15 +137,23 @@
   // 버튼/레이아웃은 그대로 두고, 프리뷰만 남는 공간(뷰포트 − 상단바 − 독)에 현재 비율로 맞춤
   function fitViewfinder() {
     const topbar = document.querySelector('.topbar');
+    const fbar = document.querySelector('.filter-bar');
     const dock = document.querySelector('.dock');
-    if (!topbar || !dock) return;
+    if (!topbar || !fbar || !dock) return;
     const R = aspectR();
-    const availW = window.innerWidth;
-    const availH = window.innerHeight - topbar.offsetHeight - dock.offsetHeight - 4;
+    let availW, availH;
+    if (state.landscape) {            // 상단바=떠있음, 필터/독=오른쪽 세로줄
+      availW = window.innerWidth - fbar.offsetWidth - dock.offsetWidth - 10;
+      availH = window.innerHeight - 10;
+    } else {                          // 상단바/필터/독=세로로 쌓임
+      availW = window.innerWidth - 8;
+      availH = window.innerHeight - topbar.offsetHeight - fbar.offsetHeight - dock.offsetHeight - 8;
+    }
     if (availW <= 0 || availH <= 0) return;
     let w, h;
     if (availW / availH > R) { h = availH; w = h * R; } else { w = availW; h = w / R; }
-    if (w > 480) { h *= 480 / w; w = 480; }
+    const MAXW = 720;
+    if (w > MAXW) { h *= MAXW / w; w = MAXW; }
     viewfinder.style.width = Math.floor(w) + 'px';
     viewfinder.style.height = Math.floor(h) + 'px';
   }
