@@ -66,12 +66,10 @@
     </div>
   </main>
 
-  <!-- 필터 캐러셀 (세로:가로스크롤 / 가로:세로스크롤) -->
-  <div class="filter-bar" id="presetBar"></div>
-
   <!-- 컨트롤 독 (세로:하단 / 가로:오른쪽 세로줄) -->
   <div class="dock">
     <div class="dock-mid">
+      <button id="filterQuick" class="lg filter-quick" aria-label="필터">CCD</button>
       <div class="mode-capsule lg" id="modeSeg">
         <span class="mode-ind"></span>
         <button data-mode="photo" class="mode-btn active">사진</button>
@@ -91,22 +89,26 @@
   <canvas id="recordCanvas" hidden></canvas>
 </div>
 
-<!-- ===== 설정 시트 ===== -->
+<!-- ===== 조절 트레이 (필터 · 화질 · 설정 탭) ===== -->
 <div id="settings" class="sheet hidden">
-  <div class="sheet-card">
+  <div class="sheet-card tray-card">
     <div class="grabber"></div>
-    <div class="sheet-head"><span class="sheet-title">설정</span><button id="settingsClose" class="done-btn">완료</button></div>
-
-    <div class="group">
-      <div class="set-row"><span>날짜 각인</span><button class="sw" data-set="date"></button></div>
-      <div class="set-row"><span>셔터음</span><button class="sw" data-set="sound"></button></div>
-      <div class="set-row"><span>진동</span><button class="sw" data-set="vibrate"></button></div>
-      <div class="set-row"><span>셀카 좌우반전</span><button class="sw" data-set="mirror"></button></div>
-      <div class="set-row"><span>영상 소리 (마이크)</span><button class="sw" data-set="mic"></button></div>
+    <div class="sheet-head">
+      <div class="seg tray-tabs" id="trayTabs">
+        <button data-tab="filter" class="active">필터</button>
+        <button data-tab="quality">화질</button>
+        <button data-tab="setting">설정</button>
+      </div>
+      <button id="settingsClose" class="done-btn">완료</button>
     </div>
 
-    <p class="group-label">화질</p>
-    <div class="group pad">
+    <!-- 필터 -->
+    <div class="tray-panel" data-panel="filter">
+      <div class="filter-grid" id="presetBar"></div>
+    </div>
+
+    <!-- 화질 -->
+    <div class="tray-panel hidden" data-panel="quality">
       <div class="seg lofi" id="lofiSeg">
         <button data-lofi="sharp">선명</button>
         <button data-lofi="normal">보통</button>
@@ -114,8 +116,19 @@
         <button data-lofi="trashy">막구짐</button>
         <button data-lofi="qvga">QVGA</button>
       </div>
+      <p class="group-foot">낮을수록 해상도가 떨어지고 거칠어져 옛 디카 느낌이 납니다. 사진·영상 모두 적용.</p>
     </div>
-    <p class="group-foot">낮을수록 해상도가 떨어지고 거칠어져 옛 디카 느낌이 납니다. 사진·영상 모두 적용.</p>
+
+    <!-- 설정 -->
+    <div class="tray-panel hidden" data-panel="setting">
+      <div class="group">
+        <div class="set-row"><span>날짜 각인</span><button class="sw" data-set="date"></button></div>
+        <div class="set-row"><span>셔터음</span><button class="sw" data-set="sound"></button></div>
+        <div class="set-row"><span>진동</span><button class="sw" data-set="vibrate"></button></div>
+        <div class="set-row"><span>셀카 좌우반전</span><button class="sw" data-set="mirror"></button></div>
+        <div class="set-row"><span>영상 소리 (마이크)</span><button class="sw" data-set="mic"></button></div>
+      </div>
+    </div>
   </div>
 </div>
 

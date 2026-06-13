@@ -139,18 +139,17 @@
   // 버튼/레이아웃은 그대로 두고, 프리뷰만 남는 공간(뷰포트 − 상단바 − 독)에 현재 비율로 맞춤
   function fitViewfinder() {
     const topbar = document.querySelector('.topbar');
-    const fbar = document.querySelector('.filter-bar');
     const dock = document.querySelector('.dock');
-    if (!topbar || !fbar || !dock) return;
+    if (!topbar || !dock) return;
     const R = aspectR();
     let availW, availH;
     if (state.landscape) {            // 그리드의 stage 셀(프리뷰 영역)에 맞춤
       const stage = document.querySelector('.stage');
       availW = (stage ? stage.clientWidth : window.innerWidth) - 12;
       availH = (stage ? stage.clientHeight : window.innerHeight) - 12;
-    } else {                          // 상단바/필터/독=세로로 쌓임
+    } else {                          // 상단바/독 = 세로로 쌓임 (필터는 트레이로 이동)
       availW = window.innerWidth - 8;
-      availH = window.innerHeight - topbar.offsetHeight - fbar.offsetHeight - dock.offsetHeight - 8;
+      availH = window.innerHeight - topbar.offsetHeight - dock.offsetHeight - 8;
     }
     if (availW <= 0 || availH <= 0) return;
     let w, h;
@@ -215,6 +214,7 @@
       hudPreset.textContent = p.name;
       hudPreset.classList.remove('show'); void hudPreset.offsetWidth; hudPreset.classList.add('show');
     }
+    const fq = $('#filterQuick'); if (fq) fq.textContent = p.name;
     applyPreviewTransform();
     kitKey = null;
 
@@ -702,7 +702,11 @@
     $$('.sw').forEach(b => b.classList.toggle('on', !!state.settings[b.dataset.set]));
     $$('#lofiSeg button').forEach(b => b.classList.toggle('active', b.dataset.lofi === state.settings.lofi));
   }
-  function openSettings() { syncSettingsUI(); $('#settings').classList.remove('hidden'); }
+  function setTrayTab(name) {
+    $$('#trayTabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    $$('.tray-panel').forEach(p => p.classList.toggle('hidden', p.dataset.panel !== name));
+  }
+  function openTray(tab) { if (tab) setTrayTab(tab); syncSettingsUI(); $('#settings').classList.remove('hidden'); }
   function closeSettings() { $('#settings').classList.add('hidden'); }
 
   // ================= 화면 전환 =================
@@ -805,7 +809,9 @@
 
   $$('#modeSeg .mode-btn').forEach(b => b.onclick = () => setMode(b.dataset.mode));
 
-  $('#settingsBtn').onclick = openSettings;
+  $('#settingsBtn').onclick = () => openTray('setting');
+  $('#filterQuick').onclick = () => openTray('filter');
+  $$('#trayTabs button').forEach(b => b.onclick = () => setTrayTab(b.dataset.tab));
   $('#settingsClose').onclick = closeSettings;
   $('#settings').onclick = (e) => { if (e.target.id === 'settings') closeSettings(); };
   $$('.sw').forEach(b => b.onclick = () => {
