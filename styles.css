@@ -121,29 +121,24 @@ body.cam-live .grain{animation-play-state:running}
 .zoom-quick{min-width:46px;height:34px;border-radius:18px;padding:0 12px;color:var(--yellow);
   font-size:14px;font-weight:700;cursor:pointer;display:grid;place-items:center}
 
-/* 가로 모드: CSS 그리드 [프리뷰 | 오른쪽 레일] + [필터 하단 가로 스트립]. 버튼 크기 유지 */
-body.landscape #camera{
-  display:grid;
-  grid-template-columns: minmax(0,1fr) clamp(158px, 23vw, 208px);
-  grid-template-rows: minmax(0,1fr) auto;
-  grid-template-areas: "stage rail" "filter rail";
+/* ===== 가로 모드 = 세로 레이아웃 유지 + 앱 전체 회전(세로 잠금) ===== */
+#rotor{position:fixed;inset:0}
+@media (orientation:landscape){
+  html,body{overflow:hidden}
+  /* 세로 치수로 스왑한 박스를 화면 가운데(음수 마진)에서 90° 회전 → 세로 UI가 똑바로 보임
+     translate는 회전 공간에서 계산돼 어긋나므로 마진으로 중앙 정렬 */
+  #rotor{position:fixed;inset:auto;top:50%;left:50%;
+    width:100vh;height:100vw;margin-left:-50vh;margin-top:-50vw;
+    transform:rotate(var(--rot,90deg));transform-origin:center center}
+  /* 조상 transform 하에서 backdrop-filter가 깨지므로 가로에선 솔리드 반투명으로 폴백 */
+  .lg,.preset .pn,.sheet-card,.toast,.g-tag{
+    -webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  .lg{background:rgba(40,40,42,.82)}
+  .preset .pn{background:rgba(64,64,66,.88)}
+  .preset.active .pn{background:#fff}
+  .sheet-card{background:rgba(22,22,24,.97)}
+  .toast{background:rgba(28,28,30,.96)}
 }
-body.landscape .stage{grid-area:stage;height:auto;min-width:0;min-height:0}
-/* 필터: 하단 가로 스크롤 스트립 */
-body.landscape .filter-bar{grid-area:filter;flex-direction:row;align-items:center;width:auto;height:auto;
-  overflow-x:auto;overflow-y:hidden;
-  padding:7px calc(14px + env(safe-area-inset-left,0px)) calc(var(--safe-bot) + 7px);gap:8px}
-/* 레일: 오른쪽 세로, 컨트롤 묶음 가운데 정렬 */
-body.landscape .dock{grid-area:rail;flex-direction:column;width:auto;height:100%;justify-content:center;gap:16px;
-  padding:calc(var(--safe-top) + 8px) calc(8px + env(safe-area-inset-right,0px)) calc(var(--safe-bot) + 8px) 6px;
-  background:linear-gradient(to right, transparent, rgba(255,255,255,.045))}
-body.landscape .dock-mid{flex-direction:column;gap:10px}
-body.landscape .controls{flex-direction:row;width:auto;max-width:none;padding:0;gap:10px;justify-content:center}
-/* 떠 있는 상단 요소 (레일 위 빈 공간/프리뷰 모서리) */
-body.landscape .topbar{position:absolute;top:calc(var(--safe-top) + 8px);right:calc(10px + env(safe-area-inset-right,0px));
-  left:auto;width:auto;padding:0;z-index:8}
-body.landscape .topbar .tb-side:first-child{display:none}
-body.landscape .rec-badge{position:absolute;top:calc(var(--safe-top) + 10px);left:calc(12px + env(safe-area-inset-left,0px))}
 
 .filter-bar{display:flex;flex:0 0 auto;gap:8px;overflow-x:auto;max-width:100%;padding:6px 10px;scrollbar-width:none}
 .filter-bar::-webkit-scrollbar{display:none}
@@ -163,7 +158,6 @@ body.landscape .rec-badge{position:absolute;top:calc(var(--safe-top) + 10px);lef
 .mode-capsule.video .mode-ind{transform:translateX(100%)}
 .mode-btn{position:relative;z-index:1;border:none;background:none;padding:8px 28px;white-space:nowrap;
   font-size:14px;font-weight:600;color:#fff;cursor:pointer;transition:color .2s}
-body.landscape .mode-btn{padding:8px 18px}
 .mode-btn.active{color:#000}
 
 .controls{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:420px;padding:2px 22px 0}

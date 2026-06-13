@@ -16,8 +16,8 @@
 
   const DEFAULT_SETTINGS = { date: true, sound: true, vibrate: true, mirror: true, mic: true, lofi: 'vintage' };
 
-  // 촬영 비율 — 세로 3:4, 화면을 가로로 돌리면 가로 4:3 (가로:세로 = w/h)
-  function aspectR() { return state.landscape ? 4 / 3 : 3 / 4; }
+  // 촬영 비율 — 항상 세로 3:4 (가로로 돌려도 레이아웃은 세로 유지, 앱 전체만 회전)
+  function aspectR() { return 3 / 4; }
   const ZMIN = 1, ZMAX = 10, ZSP = 42; // 줌 범위 + 다이얼 1× 당 픽셀
 
   // ----- 상태 -----
@@ -27,7 +27,8 @@
     audioStream: null,
     preset: PRESETS.find(p => p.id === 'ccd') || PRESETS[0],
     mode: 'photo',
-    landscape: false,
+    rotated: false,
+    rotDeg: 90,
     zoom: 1,
     frame: 0,
     camError: null,
@@ -137,21 +138,18 @@
   }
 
   // 버튼/레이아웃은 그대로 두고, 프리뷰만 남는 공간(뷰포트 − 상단바 − 독)에 현재 비율로 맞춤
+  // 레이아웃은 항상 세로. 회전 컨테이너(#rotor)의 '논리' 치수(transform 전) 기준으로 프리뷰 맞춤
   function fitViewfinder() {
     const topbar = document.querySelector('.topbar');
     const fbar = document.querySelector('.filter-bar');
     const dock = document.querySelector('.dock');
+    const root = document.getElementById('rotor');
     if (!topbar || !fbar || !dock) return;
     const R = aspectR();
-    let availW, availH;
-    if (state.landscape) {            // 그리드의 stage 셀(프리뷰 영역)에 맞춤
-      const stage = document.querySelector('.stage');
-      availW = (stage ? stage.clientWidth : window.innerWidth) - 12;
-      availH = (stage ? stage.clientHeight : window.innerHeight) - 12;
-    } else {                          // 상단바/필터/독=세로로 쌓임
-      availW = window.innerWidth - 8;
-      availH = window.innerHeight - topbar.offsetHeight - fbar.offsetHeight - dock.offsetHeight - 8;
-    }
+    const W = root ? root.clientWidth : window.innerWidth;
+    const H = root ? root.clientHeight : window.innerHeight;
+    const availW = W - 8;
+    const availH = H - topbar.offsetHeight - fbar.offsetHeight - dock.offsetHeight - 8;
     if (availW <= 0 || availH <= 0) return;
     let w, h;
     if (availW / availH > R) { h = availH; w = h * R; } else { w = availW; h = w / R; }
@@ -162,13 +160,15 @@
   }
 
   function updateOrientation() {
-    const ls = window.innerWidth > window.innerHeight;
-    if (ls !== state.landscape) {
-      state.landscape = ls;
-      document.body.classList.toggle('landscape', ls);
-      kitKey = null;
-    }
+    state.rotated = window.innerWidth > window.innerHeight;
+    const ang = (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.angle === 'number')
+      ? screen.orientation.angle : (window.orientation || 0);
+    state.rotDeg = (ang === 270 || ang === -90) ? -90 : 90;   // 가로 두 방향 모두 똑바로
+    document.documentElement.style.setProperty('--rot', state.rotDeg + 'deg');
+    kitKey = null;
+    // transform 후 레이아웃이 자리잡도록 다음 프레임에 맞춤
     fitViewfinder();
+    requestAnimationFrame(fitViewfinder);
   }
 
   // ================= 프리셋 =================
@@ -400,20 +400,31 @@
     });
     kitKey = null; // 다음 녹화/프리뷰용으로 캐시 무효화
 
+    let out = canvas;
     if (p.border === 'polaroid') {
       const pad = Math.round(outW * 0.05), bottom = Math.round(outW * 0.18);
       const fc = document.createElement('canvas'); fc.width = outW + pad * 2; fc.height = outH + pad + bottom;
       const fx = fc.getContext('2d'); fx.fillStyle = '#f6f4ec'; fx.fillRect(0, 0, fc.width, fc.height);
-      fx.drawImage(canvas, pad, pad); return fc;
+      fx.drawImage(canvas, pad, pad); out = fc;
     }
-    return canvas;
+    if (state.rotated) out = rotateCanvas(out, state.rotDeg);  // 가로(회전 잠금) → 결과도 회전(가로 사진으로 저장)
+    return out;
+  }
+
+  function rotateCanvas(src, deg) {
+    const c = document.createElement('canvas');
+    if (Math.abs(deg) === 90) { c.width = src.height; c.height = src.width; } else { c.width = src.width; c.height = src.height; }
+    const x = c.getContext('2d');
+    x.translate(c.width / 2, c.height / 2); x.rotate(deg * Math.PI / 180);
+    x.drawImage(src, -src.width / 2, -src.height / 2);
+    return c;
   }
 
   // 토스트 (에러/알림)
   let toastTimer = 0;
   function toast(msg) {
     let el = $('#toast');
-    if (!el) { el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; document.body.appendChild(el); }
+    if (!el) { el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; (document.getElementById('rotor') || document.body).appendChild(el); }
     el.textContent = msg; el.classList.add('show');
     clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
   }
@@ -453,10 +464,10 @@
     if (!VIDEO_OK) { alert('이 브라우저는 영상 녹화를 지원하지 않아요.'); return; }
     await ensureAudio();
     const crop = computeCrop(); if (!crop.vw) return;
-    const lf = LOFI[state.settings.lofi], R = aspectR();
-    const long = lf.vh, short = Math.round(long * 3 / 4);
-    const w = R >= 1 ? long : short, h = R >= 1 ? short : long;
-    recordCanvas.width = w; recordCanvas.height = h;
+    const lf = LOFI[state.settings.lofi];
+    const ph = lf.vh, pw = Math.round(ph * 3 / 4);     // 세로 프레임(그리는 단위)
+    if (state.rotated) { recordCanvas.width = ph; recordCanvas.height = pw; }  // 가로 캔버스(스왑)
+    else { recordCanvas.width = pw; recordCanvas.height = ph; }
     const rctx = recordCanvas.getContext('2d');
     kitKey = null;
     let frame = 0, lastT = 0;
@@ -464,13 +475,21 @@
     const loop = (t) => {
       if (!recording) return;
       rafId = requestAnimationFrame(loop);
-      if (t - lastT < minDelta) return;   // lf.fps로 스로틀 → 버리는 프레임 안 그림(배터리↓)
+      if (t - lastT < minDelta) return;   // lf.fps로 스로틀(배터리↓)
       lastT = t;
       const c = computeCrop();
-      if (c.vw) drawFrame(rctx, w, h, state.preset, {
-        crop: c, mirror: state.facing === 'user' && state.settings.mirror,
-        grainMul: lf.grain, frameIndex: frame++, bloom: false,
-      });
+      if (!c.vw) return;
+      const opts = { crop: c, mirror: state.facing === 'user' && state.settings.mirror, grainMul: lf.grain, frameIndex: frame++, bloom: false };
+      if (state.rotated) {                 // 가로: 세로 프레임을 회전해 가로 영상으로 기록
+        rctx.save();
+        rctx.translate(recordCanvas.width / 2, recordCanvas.height / 2);
+        rctx.rotate(state.rotDeg * Math.PI / 180);
+        rctx.translate(-pw / 2, -ph / 2);
+        drawFrame(rctx, pw, ph, state.preset, opts);
+        rctx.restore();
+      } else {
+        drawFrame(rctx, pw, ph, state.preset, opts);
+      }
     };
 
     const vstream = recordCanvas.captureStream(lf.fps);
@@ -753,9 +772,14 @@
 
   // 줌 다이얼 드래그
   const arcEl = $('#zoomArc');
-  let arcX0 = 0, arcZ0 = 1, arcDrag = false;
-  arcEl.addEventListener('pointerdown', (e) => { arcDrag = true; arcX0 = e.clientX; arcZ0 = state.zoom; arcEl.setPointerCapture(e.pointerId); });
-  arcEl.addEventListener('pointermove', (e) => { if (arcDrag) setZoom(arcZ0 - (e.clientX - arcX0) / ZSP); });
+  let arcX0 = 0, arcY0 = 0, arcZ0 = 1, arcDrag = false;
+  arcEl.addEventListener('pointerdown', (e) => { arcDrag = true; arcX0 = e.clientX; arcY0 = e.clientY; arcZ0 = state.zoom; arcEl.setPointerCapture(e.pointerId); });
+  arcEl.addEventListener('pointermove', (e) => {
+    if (!arcDrag) return;
+    // 회전 잠금 시 화면 세로 이동이 앱의 가로축이 되므로 축 보정
+    const d = state.rotated ? (state.rotDeg === 90 ? (e.clientY - arcY0) : -(e.clientY - arcY0)) : (e.clientX - arcX0);
+    setZoom(arcZ0 - d / ZSP);
+  });
   arcEl.addEventListener('pointerup', () => { arcDrag = false; });
 
   // 줌 퀵 버튼: 1→2→5→10→1
@@ -840,7 +864,7 @@
       draw(); video.srcObject = tc.captureStream(15); await video.play().catch(() => {}); draw();
       log.push('video=' + video.videoWidth + 'x' + video.videoHeight);
       showScreen('camera'); updateOrientation(); buildZoomArc(); applyPreset(state.preset);
-      log.push('landscape=' + state.landscape + ' aspectR=' + aspectR().toFixed(3));
+      log.push('rotated=' + state.rotated + ' rotDeg=' + state.rotDeg + ' aspectR=' + aspectR().toFixed(3));
       let ok = 0; for (const p of PRESETS) { applyPreset(p); const c = capturePhoto(); if (c && c.width) ok++; else log.push('photoFail=' + p.id); }
       log.push('photos=' + ok + '/' + PRESETS.length);
       log.push('videoSupport=' + VIDEO_OK + ' mime=' + (VIDEO_OK ? pickMime() : '-'));
