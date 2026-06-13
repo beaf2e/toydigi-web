@@ -171,6 +171,42 @@
     fitViewfinder();
   }
 
+  // ===== 아이폰 기본 카메라 방식: 회전잠금 중 기기를 옆으로 들면 버튼/글자만 회전 (가속도계) =====
+  let uiRot = 0;
+  function setUiRot(r) {
+    if (r === uiRot) return;
+    uiRot = r;
+    document.documentElement.style.setProperty('--ui-rot', r + 'deg');
+    document.body.classList.toggle('ui-rot', r !== 0);
+  }
+  function onTilt(e) {
+    const g = e.gamma; if (g == null) return;
+    const viewportLandscape = window.innerWidth > window.innerHeight;
+    let r = 0;
+    if (!viewportLandscape) {            // 화면은 세로(회전잠금)인데 기기를 옆으로 → 버튼만 회전
+      if (g > 35) r = 90;
+      else if (g < -35) r = -90;
+    }
+    setUiRot(r);
+  }
+  async function enableTilt() {
+    try {
+      if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const res = await DeviceOrientationEvent.requestPermission();   // iOS: 제스처에서 권한
+        if (res !== 'granted') return;
+      }
+      if (window.DeviceOrientationEvent) window.addEventListener('deviceorientation', onTilt);
+    } catch (e) {}
+  }
+  function rotateCanvas(src, deg) {
+    const c = document.createElement('canvas');
+    if (Math.abs(deg) === 90) { c.width = src.height; c.height = src.width; } else { c.width = src.width; c.height = src.height; }
+    const x = c.getContext('2d');
+    x.translate(c.width / 2, c.height / 2); x.rotate(deg * Math.PI / 180);
+    x.drawImage(src, -src.width / 2, -src.height / 2);
+    return c;
+  }
+
   // ================= 프리셋 =================
   let kitKey = null, kit = null; // 캡처/녹화용 오버레이 캐시
   function applyPreset(p) {
@@ -400,13 +436,15 @@
     });
     kitKey = null; // 다음 녹화/프리뷰용으로 캐시 무효화
 
+    let out = canvas;
     if (p.border === 'polaroid') {
       const pad = Math.round(outW * 0.05), bottom = Math.round(outW * 0.18);
       const fc = document.createElement('canvas'); fc.width = outW + pad * 2; fc.height = outH + pad + bottom;
       const fx = fc.getContext('2d'); fx.fillStyle = '#f6f4ec'; fx.fillRect(0, 0, fc.width, fc.height);
-      fx.drawImage(canvas, pad, pad); return fc;
+      fx.drawImage(canvas, pad, pad); out = fc;
     }
-    return canvas;
+    if (uiRot) out = rotateCanvas(out, uiRot);   // 기기를 옆으로 들고 찍으면 사진도 회전(가로 저장)
+    return out;
   }
 
   // 토스트 (에러/알림)
@@ -713,6 +751,7 @@
     const ok = await startCamera();
     if (!ok) { showCamError(state.camError); return; }
     showScreen('camera');
+    enableTilt();           // 기기 기울기 감지(아이폰식 버튼 회전) — 제스처에서 권한 요청
     updateOrientation();
     buildZoomArc();
     applyPreset(state.preset);

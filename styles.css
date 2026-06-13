@@ -145,6 +145,18 @@ body.landscape .topbar{position:absolute;top:calc(var(--safe-top) + 8px);right:c
 body.landscape .topbar .tb-side:first-child{display:none}
 body.landscape .rec-badge{position:absolute;top:calc(var(--safe-top) + 10px);left:calc(12px + env(safe-area-inset-left,0px))}
 
+/* ===== 아이폰 기본 카메라 방식: 회전잠금 중 기기를 옆으로 들면 버튼/글자만 회전 ===== */
+/* (가속도계로 감지. body.ui-rot일 때만 적용 → 일반 세로/가로엔 영향 없음) */
+.lg-btn .ic, #lastThumb, .zoom-quick, .mode-capsule, .preset .pn, .rec-badge {
+  transition: transform .3s cubic-bezier(.2,.7,.3,1); }
+body.ui-rot .lg-btn .ic,
+body.ui-rot #lastThumb,
+body.ui-rot .zoom-quick,
+body.ui-rot .mode-capsule,
+body.ui-rot .rec-badge { transform: rotate(var(--ui-rot, 0deg)); }
+body.ui-rot .preset .pn { transform: rotate(var(--ui-rot, 0deg)); }
+body.ui-rot .preset.active .pn { transform: rotate(var(--ui-rot, 0deg)) scale(1.05); }
+
 .filter-bar{display:flex;flex:0 0 auto;gap:8px;overflow-x:auto;max-width:100%;padding:6px 10px;scrollbar-width:none}
 .filter-bar::-webkit-scrollbar{display:none}
 .preset{flex:0 0 auto;background:none;border:none;padding:0;cursor:pointer}
