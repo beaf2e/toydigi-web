@@ -140,7 +140,10 @@ body.landscape .dock{grid-area:rail;flex-direction:column;width:auto;height:100%
   padding:calc(var(--safe-top) + 8px) calc(8px + env(safe-area-inset-right,0px)) calc(var(--safe-bot) + 8px) 6px;
   background:linear-gradient(to right, transparent, rgba(255,255,255,.045))}
 body.landscape .dock-mid{flex-direction:column;gap:10px}
-body.landscape .controls{flex-direction:row;width:auto;max-width:none;padding:0;gap:10px;justify-content:center}
+/* 컨트롤(썸네일·셔터·플립)도 가로배열 X → 세로로 쌓기 */
+body.landscape .controls{flex-direction:column;width:auto;max-width:none;padding:0;gap:12px;justify-content:center}
+/* 방향만 돌리기: 방향성 있는 아이콘(설정·플립)만 90° (텍스트칩은 똑바로 두어 가독성 유지) */
+body.landscape .lg-btn .ic{transform:rotate(90deg);transition:transform .3s ease}
 /* 떠 있는 상단 요소 (레일 위 빈 공간/프리뷰 모서리) */
 body.landscape .topbar{position:absolute;top:calc(var(--safe-top) + 8px);right:calc(10px + env(safe-area-inset-right,0px));
   left:auto;width:auto;padding:0;z-index:8}
