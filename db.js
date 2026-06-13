@@ -25,9 +25,9 @@ const DB = (() => {
   }
 
   return {
-    async add(blob, presetName, kind = 'photo') {
+    async add(blob, presetName, kind = 'photo', meta = null) {
       const id = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-      const rec = { id, blob, preset: presetName, kind, ts: Date.now() };
+      const rec = { id, blob, preset: presetName, kind, meta, ts: Date.now() };
       const store = await tx('readwrite');
       return new Promise((res, rej) => {
         const r = store.add(rec);

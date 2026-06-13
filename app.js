@@ -30,6 +30,7 @@
     landscape: false,
     zoom: 1,
     frame: 0,
+    camError: null,
     lastBlob: null, lastKind: 'photo', lastBlobUrl: null,
     settings: loadSettings(),
   };
@@ -68,8 +69,9 @@
       video.srcObject = state.stream;
       await video.play().catch(() => {});
       applyPreviewTransform();
+      state.camError = null;
       return true;
-    } catch (err) { console.error(err); return false; }
+    } catch (err) { console.error(err); state.camError = err; return false; }
   }
   function stopCamera() {
     if (state.stream) { state.stream.getTracks().forEach(t => t.stop()); state.stream = null; }
@@ -221,10 +223,15 @@
 
   // ================= 셔터음 + 진동 =================
   let audioCtx = null;
+  function ensureAudioCtx() {                 // iOS는 suspended로 시작 → 제스처에서 resume 필요
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    return audioCtx;
+  }
   function shutterSound() {
     if (!state.settings.sound) return;
     try {
-      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      ensureAudioCtx();
       const t = audioCtx.currentTime;
       const click = audioCtx.createOscillator(); const cg = audioCtx.createGain();
       click.type = 'square'; click.frequency.value = 2400;
@@ -244,7 +251,7 @@
   function beep(freq, dur) {
     if (!state.settings.sound) return;
     try {
-      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      ensureAudioCtx();
       const t = audioCtx.currentTime; const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
       o.type = 'sine'; o.frequency.value = freq;
       g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.2, t + 0.01);
@@ -401,15 +408,31 @@
     return canvas;
   }
 
+  // 토스트 (에러/알림)
+  let toastTimer = 0;
+  function toast(msg) {
+    let el = $('#toast');
+    if (!el) { el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; document.body.appendChild(el); }
+    el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+  // 컷에 저장할 메타데이터 (프리셋·화질·줌·전후면)
+  function metaNow(extra) {
+    const lf = LOFI[state.settings.lofi];
+    return Object.assign({ lofi: state.settings.lofi, lofiLabel: lf.label, zoom: Math.round(state.zoom * 10) / 10, facing: state.facing }, extra || {});
+  }
+
   async function takePhoto() {
     buzz([6, 4, 10]); shutterSound();
     flash.classList.add('on'); setTimeout(() => flash.classList.remove('on'), 140);
+    viewfinder.classList.add('snap'); setTimeout(() => viewfinder.classList.remove('snap'), 220);
     const canvas = capturePhoto(); if (!canvas) return;
     developing.classList.remove('hidden');
     state.frame++; frameCountEl.textContent = String(state.frame).padStart(3, '0');
     canvas.toBlob(async (blob) => {
-      if (!blob) { developing.classList.add('hidden'); return; }
-      try { await DB.add(blob, state.preset.name, 'photo'); setLastThumb(blob); } catch (e) {}
+      if (!blob) { developing.classList.add('hidden'); toast('사진 저장에 실패했어요'); return; }
+      try { await DB.add(blob, state.preset.name, 'photo', metaNow()); setLastThumb(blob); }
+      catch (e) { toast(e && e.name === 'QuotaExceededError' ? '저장공간이 부족해요 · 필름롤을 정리해 주세요' : '저장 실패'); }
       showResult(blob, 'photo');
       setTimeout(() => developing.classList.add('hidden'), 650);
     }, 'image/jpeg', 0.9);
@@ -435,15 +458,18 @@
     recordCanvas.width = w; recordCanvas.height = h;
     const rctx = recordCanvas.getContext('2d');
     kitKey = null;
-    let frame = 0;
-    const loop = () => {
+    let frame = 0, lastT = 0;
+    const minDelta = 1000 / lf.fps;
+    const loop = (t) => {
       if (!recording) return;
+      rafId = requestAnimationFrame(loop);
+      if (t - lastT < minDelta) return;   // lf.fps로 스로틀 → 버리는 프레임 안 그림(배터리↓)
+      lastT = t;
       const c = computeCrop();
       if (c.vw) drawFrame(rctx, w, h, state.preset, {
         crop: c, mirror: state.facing === 'user' && state.settings.mirror,
         grainMul: lf.grain, frameIndex: frame++, bloom: false,
       });
-      rafId = requestAnimationFrame(loop);
     };
 
     const vstream = recordCanvas.captureStream(lf.fps);
@@ -463,11 +489,12 @@
 
     recording = true;
     shutter.classList.add('rec');
+    viewfinder.classList.add('recording');
     recBadge.classList.remove('hidden');
     recStart = performance.now();
     updateRecTime();
     recTimer = setInterval(updateRecTime, 500);
-    loop();
+    rafId = requestAnimationFrame(loop);
     recorder.start(250);
     beep(880, 0.08); buzz(20);
   }
@@ -484,17 +511,21 @@
     clearInterval(recTimer);
     cancelAnimationFrame(rafId);
     shutter.classList.remove('rec');
+    viewfinder.classList.remove('recording');
     recBadge.classList.add('hidden');
     beep(440, 0.1); buzz([10, 30, 10]);
     try { recorder.stop(); } catch (e) {}
   }
 
   async function onRecStop() {
+    let poster = '';
+    try { poster = recordCanvas.toDataURL('image/jpeg', 0.6); } catch (e) {}
     const blob = new Blob(recChunks, { type: recMime });
     recChunks = [];
     if (!blob.size) return;
     state.frame++; frameCountEl.textContent = String(state.frame).padStart(3, '0');
-    try { await DB.add(blob, state.preset.name, 'video'); setVideoThumb(blob); } catch (e) {}
+    try { await DB.add(blob, state.preset.name, 'video', metaNow({ poster })); setVideoThumb(blob); }
+    catch (e) { toast(e && e.name === 'QuotaExceededError' ? '저장공간이 부족해요 · 필름롤을 정리해 주세요' : '저장 실패'); }
     showResult(blob, 'video');
   }
 
@@ -543,33 +574,87 @@
 
   // ================= 갤러리 =================
   let galleryUrls = [];
+  let gallerySelect = false;
+  const gallerySel = new Set();
+  let galleryIO = null;
   function revokeGalleryUrls() { galleryUrls.forEach(u => URL.revokeObjectURL(u)); galleryUrls = []; }
+
+  function setSelectMode(on) {
+    gallerySelect = on; gallerySel.clear();
+    document.body.classList.toggle('gallery-select', on);
+    $$('#galleryGrid .g-cell').forEach(c => c.classList.remove('sel'));
+    updateGalleryHead();
+  }
+  function updateGalleryHead() {
+    const sel = $('#gallerySelectBtn'), del = $('#gallerySelDel');
+    if (!sel) return;
+    sel.textContent = gallerySelect ? '취소' : '선택';
+    del.classList.toggle('hidden', !gallerySelect);
+    del.textContent = `삭제 (${gallerySel.size})`;
+  }
+
+  // 셀이 화면에 들어올 때만 썸네일 로드 (레이지). 영상은 저장된 포스터 1프레임 사용
+  function loadCell(cell) {
+    const it = cell._rec; if (!it || cell._loaded) return; cell._loaded = true;
+    const tag = `<span class="g-tag">${it.preset || ''}</span>`;
+    if (it.kind === 'video') {
+      const poster = it.meta && it.meta.poster;
+      cell.innerHTML = (poster ? `<img src="${poster}" alt="">` : `<span class="g-noposter"></span>`) + `<span class="g-play">▶</span>` + tag;
+    } else {
+      const url = URL.createObjectURL(it.blob); galleryUrls.push(url);
+      cell.innerHTML = `<img src="${url}" alt="">` + tag;
+    }
+  }
+
   async function openGallery() {
     revokeGalleryUrls();
+    if (gallerySelect) setSelectMode(false);
     const grid = $('#galleryGrid'); grid.innerHTML = '';
-    const items = await DB.all();
+    if (galleryIO) galleryIO.disconnect();
+    galleryIO = new IntersectionObserver((entries) => {
+      entries.forEach(en => { if (en.isIntersecting) { loadCell(en.target); galleryIO.unobserve(en.target); } });
+    }, { root: grid, rootMargin: '250px' });
+
+    let items = [];
+    try { items = await DB.all(); } catch (e) { toast('필름롤을 불러오지 못했어요'); }
     $('#galleryEmpty').style.display = items.length ? 'none' : 'block';
+    $('#galleryCount').textContent = items.length ? `${items.length}컷` : '';
     items.forEach(it => {
-      const url = URL.createObjectURL(it.blob); galleryUrls.push(url);
       const cell = document.createElement('button'); cell.className = 'g-cell';
-      cell.innerHTML = it.kind === 'video'
-        ? `<video src="${url}" muted playsinline></video><span class="g-play">▶</span><span class="g-tag">${it.preset || ''}</span>`
-        : `<img src="${url}" alt=""><span class="g-tag">${it.preset || ''}</span>`;
-      cell.onclick = () => openViewer(it, url);
+      cell._rec = it;
+      cell.innerHTML = `<span class="g-ph"></span>`;
+      cell.onclick = () => {
+        if (gallerySelect) {
+          if (gallerySel.has(it.id)) { gallerySel.delete(it.id); cell.classList.remove('sel'); }
+          else { gallerySel.add(it.id); cell.classList.add('sel'); }
+          updateGalleryHead();
+        } else {
+          const url = it.kind === 'video'
+            ? URL.createObjectURL(it.blob)
+            : (cell.querySelector('img') ? cell.querySelector('img').src : URL.createObjectURL(it.blob));
+          openViewer(it, url);
+        }
+      };
       grid.appendChild(cell);
+      galleryIO.observe(cell);
     });
     showScreen('gallery');
   }
 
-  let viewerCur = null;
+  let viewerCur = null, viewerUrl = null;
   function openViewer(rec, url) {
-    viewerCur = rec;
+    viewerCur = rec; viewerUrl = url;
     const img = $('#viewerImg'), vid = $('#viewerVideo');
     if (rec.kind === 'video') {
       img.classList.add('hidden'); vid.classList.remove('hidden'); vid.src = url; vid.play().catch(() => {});
     } else {
       vid.classList.add('hidden'); vid.removeAttribute('src'); img.classList.remove('hidden'); img.src = url;
     }
+    const m = rec.meta || {};
+    const d = new Date(rec.ts || Date.now());
+    const parts = [rec.preset, m.lofiLabel, m.zoom ? m.zoom + '×' : null,
+      `${d.getFullYear()}.${two(d.getMonth() + 1)}.${two(d.getDate())}`].filter(Boolean);
+    const mEl = $('#viewerMeta'); if (mEl) mEl.textContent = parts.join('  ·  ');
     showScreen('viewer');
   }
 
@@ -586,6 +671,7 @@
     ['start', 'camera', 'result', 'gallery', 'viewer'].forEach(s => {
       $('#' + s).classList.toggle('hidden', s !== name);
     });
+    document.body.classList.toggle('cam-live', name === 'camera'); // grain 애니는 카메라 화면에서만
   }
 
   // ================= 모드 =================
@@ -598,10 +684,33 @@
   }
 
   // ================= 이벤트 =================
+  function camErrorInfo(err) {
+    if (!window.isSecureContext) return { msg: 'HTTPS에서만 카메라를 쓸 수 있어요.', steps: ['주소가 https:// 로 시작하는지 확인하세요.'], reload: true };
+    const n = err && err.name;
+    if (n === 'NotAllowedError' || n === 'SecurityError') return {
+      msg: '카메라 권한이 거부됐어요.',
+      steps: ['Safari 주소창 왼쪽 「ᴀA」 → 웹사이트 설정 → 카메라 → 「허용」', '또는 설정 앱 ▸ Safari ▸ 카메라 ▸ 「허용」', '바꾼 뒤 아래 「새로고침」을 눌러주세요.'],
+      reload: true };
+    if (n === 'NotFoundError' || n === 'OverconstrainedError') return { msg: '카메라를 찾을 수 없어요.', steps: ['기기에 카메라가 있는지 확인해 주세요.'], reload: false };
+    if (n === 'NotReadableError') return { msg: '다른 앱이 카메라를 사용 중이에요.', steps: ['카메라를 쓰는 다른 앱을 닫고 다시 시도해 주세요.'], reload: false };
+    return { msg: '카메라를 켤 수 없어요.', steps: ['잠시 후 다시 시도해 주세요.'], reload: true };
+  }
+  function showCamError(err) {
+    const info = camErrorInfo(err);
+    $('#startHint').textContent = info.msg;
+    const g = $('#startGuide');
+    g.innerHTML = '<ul class="guide-steps">' + info.steps.map(s => `<li>${s}</li>`).join('') + '</ul>' +
+      (info.reload ? '<button id="reloadBtn" class="btn-outline">새로고침</button>' : '');
+    g.classList.remove('hidden');
+    const rb = $('#reloadBtn'); if (rb) rb.onclick = () => location.reload();
+    $('#startBtn').textContent = '다시 시도';
+  }
+
   $('#startBtn').onclick = async () => {
     $('#startHint').textContent = '카메라 켜는 중…';
+    $('#startGuide').classList.add('hidden');
     const ok = await startCamera();
-    if (!ok) { $('#startHint').textContent = '카메라를 켤 수 없어요. 권한 또는 HTTPS를 확인하세요.'; return; }
+    if (!ok) { showCamError(state.camError); return; }
     showScreen('camera');
     updateOrientation();
     buildZoomArc();
@@ -673,15 +782,21 @@
   });
 
   $('#galleryBtn').onclick = openGallery;
-  $('#galleryClose').onclick = () => { revokeGalleryUrls(); showScreen('camera'); };
-  $('#clearAll').onclick = async () => { if (confirm('필름롤의 모든 사진/영상을 삭제할까요?')) { await DB.clear(); openGallery(); } };
+  $('#galleryClose').onclick = () => { if (gallerySelect) setSelectMode(false); revokeGalleryUrls(); showScreen('camera'); };
+  $('#gallerySelectBtn').onclick = () => setSelectMode(!gallerySelect);
+  $('#gallerySelDel').onclick = async () => {
+    if (!gallerySel.size) return;
+    if (!confirm(`${gallerySel.size}개를 삭제할까요?`)) return;
+    for (const id of [...gallerySel]) { try { await DB.remove(id); } catch (e) {} }
+    setSelectMode(false); openGallery();
+  };
 
   $('#retakeBtn').onclick = () => { const v = $('#resultVideo'); v.pause(); v.removeAttribute('src'); showScreen('camera'); };
   $('#saveBtn').onclick = () => state.lastBlob && saveBlob(state.lastBlob, fname(state.lastKind, state.lastBlob.type));
 
-  $('#viewerClose').onclick = () => { $('#viewerVideo').pause(); openGallery(); };
+  $('#viewerClose').onclick = () => { $('#viewerVideo').pause(); if (viewerCur && viewerCur.kind === 'video' && viewerUrl) URL.revokeObjectURL(viewerUrl); openGallery(); };
   $('#viewerSave').onclick = () => viewerCur && saveBlob(viewerCur.blob, fname(viewerCur.kind, viewerCur.blob.type));
-  $('#viewerDelete').onclick = async () => { if (viewerCur) { await DB.remove(viewerCur.id); openGallery(); } };
+  $('#viewerDelete').onclick = async () => { if (viewerCur) { try { await DB.remove(viewerCur.id); } catch (e) {} if (viewerCur.kind === 'video' && viewerUrl) URL.revokeObjectURL(viewerUrl); openGallery(); } };
 
   // 키보드(데스크탑): 스페이스=촬영/녹화, F=전환, V=모드
   window.addEventListener('keydown', (e) => {

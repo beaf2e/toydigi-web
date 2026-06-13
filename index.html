@@ -27,6 +27,7 @@
     <p class="start-sub">레트로 디카 · 필름 필터 카메라</p>
     <button id="startBtn" class="btn-filled">카메라 시작</button>
     <p id="startHint" class="start-hint">카메라 접근을 허용해 주세요</p>
+    <div id="startGuide" class="start-guide hidden"></div>
   </div>
 </div>
 
@@ -140,8 +141,11 @@
 <div id="gallery" class="screen hidden">
   <header class="gallery-head">
     <button id="galleryClose" class="text-btn"><svg viewBox="0 0 24 24" class="ic sm"><path d="M15 18l-6-6 6-6"/></svg>카메라</button>
-    <span class="gallery-title">필름롤</span>
-    <button id="clearAll" class="text-btn danger">비우기</button>
+    <span class="gallery-title">필름롤 <span id="galleryCount" class="g-count"></span></span>
+    <div class="gallery-head-right">
+      <button id="gallerySelDel" class="text-btn danger hidden">삭제</button>
+      <button id="gallerySelectBtn" class="text-btn">선택</button>
+    </div>
   </header>
   <div id="galleryGrid" class="gallery-grid"></div>
   <p id="galleryEmpty" class="empty-note">아직 찍은 사진이 없어요</p>
@@ -159,6 +163,7 @@
     <img id="viewerImg" alt="" />
     <video id="viewerVideo" class="hidden" playsinline controls loop></video>
   </div>
+  <p id="viewerMeta" class="viewer-meta"></p>
   <footer class="view-bottom">
     <button id="viewerSave" class="pill-action primary">
       <svg viewBox="0 0 24 24" class="ic sm"><path d="M12 16V4"/><path d="M8 8l4-4 4 4"/><path d="M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>저장
