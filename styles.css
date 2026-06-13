@@ -121,20 +121,29 @@ body.cam-live .grain{animation-play-state:running}
 .zoom-quick{min-width:46px;height:34px;border-radius:18px;padding:0 12px;color:var(--yellow);
   font-size:14px;font-weight:700;cursor:pointer;display:grid;place-items:center}
 
-/* 가로 모드: 버튼 크기 그대로, 오른쪽 세로줄로. [프리뷰 | 필터세로 | 컨트롤세로], 프리뷰 크게 */
-body.landscape #camera{flex-direction:row}
-body.landscape .topbar{position:absolute;top:calc(var(--safe-top) + 8px);right:14px;left:auto;width:auto;padding:0;z-index:8}
-body.landscape .topbar .tb-side:first-child{display:none}
-body.landscape .rec-badge{position:absolute;top:calc(var(--safe-top) + 10px);left:14px}
-body.landscape .stage{order:0;height:100%}
-body.landscape .filter-bar{order:1;flex-direction:column;flex-wrap:nowrap;overflow-y:auto;overflow-x:hidden;
-  width:84px;height:100%;padding:calc(var(--safe-top) + 14px) 7px calc(var(--safe-bot) + 12px);gap:7px}
-body.landscape .filter-bar .preset{width:100%}
-body.landscape .filter-bar .preset .pn{display:block;text-align:center;padding:7px 4px}
-body.landscape .dock{order:2;flex-direction:column;width:222px;height:100%;justify-content:center;gap:18px;
-  padding:calc(var(--safe-top) + 12px) 8px calc(var(--safe-bot) + 12px)}
+/* 가로 모드: CSS 그리드 [프리뷰 | 오른쪽 레일] + [필터 하단 가로 스트립]. 버튼 크기 유지 */
+body.landscape #camera{
+  display:grid;
+  grid-template-columns: minmax(0,1fr) clamp(158px, 23vw, 208px);
+  grid-template-rows: minmax(0,1fr) auto;
+  grid-template-areas: "stage rail" "filter rail";
+}
+body.landscape .stage{grid-area:stage;height:auto;min-width:0;min-height:0}
+/* 필터: 하단 가로 스크롤 스트립 */
+body.landscape .filter-bar{grid-area:filter;flex-direction:row;align-items:center;width:auto;height:auto;
+  overflow-x:auto;overflow-y:hidden;
+  padding:7px calc(14px + env(safe-area-inset-left,0px)) calc(var(--safe-bot) + 7px);gap:8px}
+/* 레일: 오른쪽 세로, 컨트롤 묶음 가운데 정렬 */
+body.landscape .dock{grid-area:rail;flex-direction:column;width:auto;height:100%;justify-content:center;gap:16px;
+  padding:calc(var(--safe-top) + 8px) calc(8px + env(safe-area-inset-right,0px)) calc(var(--safe-bot) + 8px) 6px;
+  background:linear-gradient(to right, transparent, rgba(255,255,255,.045))}
 body.landscape .dock-mid{flex-direction:column;gap:10px}
-body.landscape .controls{width:100%;max-width:none;padding:0;gap:10px;justify-content:center}
+body.landscape .controls{flex-direction:row;width:auto;max-width:none;padding:0;gap:10px;justify-content:center}
+/* 떠 있는 상단 요소 (레일 위 빈 공간/프리뷰 모서리) */
+body.landscape .topbar{position:absolute;top:calc(var(--safe-top) + 8px);right:calc(10px + env(safe-area-inset-right,0px));
+  left:auto;width:auto;padding:0;z-index:8}
+body.landscape .topbar .tb-side:first-child{display:none}
+body.landscape .rec-badge{position:absolute;top:calc(var(--safe-top) + 10px);left:calc(12px + env(safe-area-inset-left,0px))}
 
 .filter-bar{display:flex;flex:0 0 auto;gap:8px;overflow-x:auto;max-width:100%;padding:6px 10px;scrollbar-width:none}
 .filter-bar::-webkit-scrollbar{display:none}
@@ -143,7 +152,8 @@ body.landscape .controls{width:100%;max-width:none;padding:0;gap:10px;justify-co
 .preset .pn{display:block;font-size:13px;font-weight:600;color:#fff;padding:7px 15px;border-radius:18px;
   background:rgba(255,255,255,.14);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);
   border:.5px solid rgba(255,255,255,.22);white-space:nowrap;transition:.16s}
-.preset.active .pn{background:#fff;color:#000;border-color:#fff}
+.preset.active .pn{background:#fff;color:#000;border-color:#fff;transform:scale(1.05);
+  box-shadow:0 0 0 2px rgba(255,255,255,.3), 0 3px 12px rgba(0,0,0,.45)}
 
 .mode-capsule{position:relative;display:flex;padding:4px;border-radius:24px}
 .mode-capsule::after{opacity:.35}
@@ -151,8 +161,9 @@ body.landscape .controls{width:100%;max-width:none;padding:0;gap:10px;justify-co
   background:rgba(255,255,255,.92);box-shadow:0 2px 8px rgba(0,0,0,.22);
   transition:transform .3s cubic-bezier(.3,1.3,.5,1)}
 .mode-capsule.video .mode-ind{transform:translateX(100%)}
-.mode-btn{position:relative;z-index:1;border:none;background:none;padding:8px 28px;
+.mode-btn{position:relative;z-index:1;border:none;background:none;padding:8px 28px;white-space:nowrap;
   font-size:14px;font-weight:600;color:#fff;cursor:pointer;transition:color .2s}
+body.landscape .mode-btn{padding:8px 18px}
 .mode-btn.active{color:#000}
 
 .controls{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:420px;padding:2px 22px 0}
@@ -258,11 +269,6 @@ body.gallery-select .g-cell::after{content:"";position:absolute;right:6px;bottom
   border-radius:50%;border:2px solid rgba(255,255,255,.8);background:rgba(0,0,0,.25)}
 body.gallery-select .g-cell.sel::after{display:none}
 .viewer-meta{text-align:center;color:var(--label2);font-size:13px;margin:10px 16px 0;font-variant-numeric:tabular-nums}
-
-/* ---------- 가로 노치 세이프에어리어 ---------- */
-body.landscape .topbar{right:calc(14px + env(safe-area-inset-right,0px))}
-body.landscape .dock{padding-right:calc(8px + env(safe-area-inset-right,0px))}
-body.landscape .stage{padding-left:env(safe-area-inset-left,0px)}
 
 /* ---------- 모션 최소화 ---------- */
 @media (prefers-reduced-motion:reduce){

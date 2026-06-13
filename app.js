@@ -144,9 +144,10 @@
     if (!topbar || !fbar || !dock) return;
     const R = aspectR();
     let availW, availH;
-    if (state.landscape) {            // 상단바=떠있음, 필터/독=오른쪽 세로줄
-      availW = window.innerWidth - fbar.offsetWidth - dock.offsetWidth - 10;
-      availH = window.innerHeight - 10;
+    if (state.landscape) {            // 그리드의 stage 셀(프리뷰 영역)에 맞춤
+      const stage = document.querySelector('.stage');
+      availW = (stage ? stage.clientWidth : window.innerWidth) - 12;
+      availH = (stage ? stage.clientHeight : window.innerHeight) - 12;
     } else {                          // 상단바/필터/독=세로로 쌓임
       availW = window.innerWidth - 8;
       availH = window.innerHeight - topbar.offsetHeight - fbar.offsetHeight - dock.offsetHeight - 8;
