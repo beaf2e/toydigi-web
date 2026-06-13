@@ -57,7 +57,6 @@ button{font-family:inherit;color:inherit}
   background:#000;overflow:hidden;touch-action:none;
   --vignette:.3;--grain-opacity:.1;--scanline-opacity:0;--leak-alpha:0;
   --tint-color:#000;--tint-alpha:0;--tint-blend:soft-light}
-body.landscape .viewfinder{aspect-ratio:4/3}
 .viewfinder.polaroid{background:#f6f4ec;padding:14px 14px 44px}
 #video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:filter .25s}
 .viewfinder.polaroid #video{position:relative;border-radius:2px}
@@ -121,15 +120,7 @@ body.landscape .viewfinder{aspect-ratio:4/3}
 .zoom-quick{min-width:46px;height:34px;border-radius:18px;padding:0 12px;color:var(--yellow);
   font-size:14px;font-weight:700;cursor:pointer;display:grid;place-items:center}
 
-/* 가로 모드: 프리뷰 높이를 뷰포트 기준 고정값으로(순환 의존 방지), 컨트롤 컴팩트 */
-body.landscape .viewfinder{aspect-ratio:4/3;width:auto;max-width:96vw;
-  height:calc(100dvh - 220px - var(--safe-top) - var(--safe-bot))}
-body.landscape .topbar{padding-top:calc(var(--safe-top) + 4px);padding-bottom:0}
-body.landscape .dock{gap:6px;padding:4px 14px calc(var(--safe-bot) + 8px)}
-body.landscape .filter-bar{padding:0 6px}
-body.landscape .controls{padding-top:0}
-body.landscape .shutter{width:60px;height:60px}
-body.landscape .shutter-core{width:48px;height:48px}
+/* 가로 모드: 레이아웃·버튼은 그대로, 프리뷰만 남는 공간에 맞춰 JS(fitViewfinder)가 4:3로 크기 지정 */
 
 .filter-bar{display:flex;gap:8px;overflow-x:auto;max-width:100%;padding:2px 6px;scrollbar-width:none}
 .filter-bar::-webkit-scrollbar{display:none}

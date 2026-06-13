@@ -134,6 +134,22 @@
     if (arc) showZoomArc();
   }
 
+  // 버튼/레이아웃은 그대로 두고, 프리뷰만 남는 공간(뷰포트 − 상단바 − 독)에 현재 비율로 맞춤
+  function fitViewfinder() {
+    const topbar = document.querySelector('.topbar');
+    const dock = document.querySelector('.dock');
+    if (!topbar || !dock) return;
+    const R = aspectR();
+    const availW = window.innerWidth;
+    const availH = window.innerHeight - topbar.offsetHeight - dock.offsetHeight - 4;
+    if (availW <= 0 || availH <= 0) return;
+    let w, h;
+    if (availW / availH > R) { h = availH; w = h * R; } else { w = availW; h = w / R; }
+    if (w > 480) { h *= 480 / w; w = 480; }
+    viewfinder.style.width = Math.floor(w) + 'px';
+    viewfinder.style.height = Math.floor(h) + 'px';
+  }
+
   function updateOrientation() {
     const ls = window.innerWidth > window.innerHeight;
     if (ls !== state.landscape) {
@@ -141,6 +157,7 @@
       document.body.classList.toggle('landscape', ls);
       kitKey = null;
     }
+    fitViewfinder();
   }
 
   // ================= 프리셋 =================
@@ -582,6 +599,7 @@
     buildZoomArc();
     applyPreset(state.preset);
     setZoom(1, false);
+    requestAnimationFrame(fitViewfinder);
     if (!VIDEO_OK) $('#modeSeg').querySelector('[data-mode=video]').style.display = 'none';
     setInterval(updateDateStamp, 30000);
   };
