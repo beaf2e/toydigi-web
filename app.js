@@ -142,15 +142,9 @@
     const dock = document.querySelector('.dock');
     if (!topbar || !dock) return;
     const R = aspectR();
-    let availW, availH;
-    if (state.landscape) {            // 그리드의 stage 셀(프리뷰 영역)에 맞춤
-      const stage = document.querySelector('.stage');
-      availW = (stage ? stage.clientWidth : window.innerWidth) - 12;
-      availH = (stage ? stage.clientHeight : window.innerHeight) - 12;
-    } else {                          // 상단바/독 = 세로로 쌓임 (필터는 트레이로 이동)
-      availW = window.innerWidth - 8;
-      availH = window.innerHeight - topbar.offsetHeight - dock.offsetHeight - 8;
-    }
+    // 세로·가로 동일 레이아웃(상단바/프리뷰/하단 독) → 같은 방식으로 프리뷰만 맞춤
+    const availW = window.innerWidth - 8;
+    const availH = window.innerHeight - topbar.offsetHeight - dock.offsetHeight - 8;
     if (availW <= 0 || availH <= 0) return;
     let w, h;
     if (availW / availH > R) { h = availH; w = h * R; } else { w = availW; h = w / R; }

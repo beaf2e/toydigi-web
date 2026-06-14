@@ -123,32 +123,9 @@ body.cam-live .grain{animation-play-state:running}
 .filter-quick{min-width:54px;height:34px;border-radius:18px;padding:0 14px;color:#fff;
   font-size:13px;font-weight:700;letter-spacing:.3px;cursor:pointer;display:grid;place-items:center}
 
-/* 가로 모드: 프리뷰 | 오른쪽 컨트롤 레일 (필터는 트레이로 이동) */
-body.landscape #camera{
-  display:grid;
-  grid-template-columns: minmax(0,1fr) clamp(150px, 22vw, 200px);
-  grid-template-rows: minmax(0,1fr);
-  grid-template-areas: "stage rail";
-}
-body.landscape .stage{grid-area:stage;height:auto;min-width:0;min-height:0}
-/* 필터: 하단 가로 스크롤 스트립 */
-body.landscape .filter-bar{grid-area:filter;flex-direction:row;align-items:center;width:auto;height:auto;
-  overflow-x:auto;overflow-y:hidden;
-  padding:7px calc(14px + env(safe-area-inset-left,0px)) calc(var(--safe-bot) + 7px);gap:8px}
-/* 레일: 오른쪽 세로, 컨트롤 묶음 가운데 정렬 */
-body.landscape .dock{grid-area:rail;flex-direction:column;width:auto;height:100%;justify-content:center;gap:16px;
-  padding:calc(var(--safe-top) + 8px) calc(8px + env(safe-area-inset-right,0px)) calc(var(--safe-bot) + 8px) 6px;
-  background:linear-gradient(to right, transparent, rgba(255,255,255,.045))}
-body.landscape .dock-mid{flex-direction:column;gap:10px}
-/* 컨트롤(썸네일·셔터·플립)도 가로배열 X → 세로로 쌓기 */
-body.landscape .controls{flex-direction:column;width:auto;max-width:none;padding:0;gap:12px;justify-content:center}
-/* 방향만 돌리기: 방향성 있는 아이콘(설정·플립)만 90° (텍스트칩은 똑바로 두어 가독성 유지) */
-body.landscape .lg-btn .ic{transform:rotate(90deg);transition:transform .3s ease}
-/* 떠 있는 상단 요소 (레일 위 빈 공간/프리뷰 모서리) */
-body.landscape .topbar{position:absolute;top:calc(var(--safe-top) + 8px);right:calc(10px + env(safe-area-inset-right,0px));
-  left:auto;width:auto;padding:0;z-index:8}
-body.landscape .topbar .tb-side:first-child{display:none}
-body.landscape .rec-badge{position:absolute;top:calc(var(--safe-top) + 10px);left:calc(12px + env(safe-area-inset-left,0px))}
+/* 가로 모드: 세로와 동일한 레이아웃 유지 (상단바/프리뷰/하단 독). 버튼 위치 그대로 = 화면 아래 */
+body.landscape .topbar{padding-right:calc(16px + env(safe-area-inset-right,0px));padding-left:calc(16px + env(safe-area-inset-left,0px))}
+body.landscape .dock{padding-left:calc(14px + env(safe-area-inset-left,0px));padding-right:calc(14px + env(safe-area-inset-right,0px))}
 
 /* ===== 아이폰 기본 카메라 방식: 회전잠금 중 기기를 옆으로 들면 버튼/글자만 회전 ===== */
 /* (가속도계로 감지. body.ui-rot일 때만 적용 → 일반 세로/가로엔 영향 없음) */
@@ -180,7 +157,6 @@ body.ui-rot .preset.active .pn { transform: rotate(var(--ui-rot, 0deg)) scale(1.
 .mode-capsule.video .mode-ind{transform:translateX(100%)}
 .mode-btn{position:relative;z-index:1;border:none;background:none;padding:8px 28px;white-space:nowrap;
   font-size:14px;font-weight:600;color:#fff;cursor:pointer;transition:color .2s}
-body.landscape .mode-btn{padding:8px 18px}
 .mode-btn.active{color:#000}
 
 .controls{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:420px;padding:2px 22px 0}
