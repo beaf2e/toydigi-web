@@ -1,5 +1,5 @@
-/* ToyDigi 서비스워커 — 오프라인 캐시 (앱 셸) */
-const CACHE = 'toydigi-v15';
+/* ToyDigi 서비스워커 — 네트워크 우선(항상 최신) + 오프라인 폴백 */
+const CACHE = 'toydigi-v16';
 const ASSETS = [
   './',
   './index.html',
@@ -28,16 +28,13 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const { request } = e;
   if (request.method !== 'GET') return;
-  // 같은 출처만 캐시 우선, 그 외(폰트 등)는 네트워크
-  if (new URL(request.url).origin === location.origin) {
-    e.respondWith(
-      caches.match(request).then((cached) =>
-        cached || fetch(request).then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(request, copy)).catch(() => {});
-          return res;
-        }).catch(() => cached)
-      )
-    );
-  }
+  if (new URL(request.url).origin !== location.origin) return;
+  // 네트워크 우선: 온라인이면 항상 최신을 받아 캐시 갱신, 실패(오프라인)면 캐시 폴백
+  e.respondWith(
+    fetch(request).then((res) => {
+      const copy = res.clone();
+      caches.open(CACHE).then((c) => c.put(request, copy)).catch(() => {});
+      return res;
+    }).catch(() => caches.match(request))
+  );
 });
