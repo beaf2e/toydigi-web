@@ -123,21 +123,23 @@ body.cam-live .grain{animation-play-state:running}
 .filter-quick{min-width:54px;height:34px;border-radius:18px;padding:0 14px;color:#fff;
   font-size:13px;font-weight:700;letter-spacing:.3px;cursor:pointer;display:grid;place-items:center}
 
-/* 가로 모드: 세로와 동일한 레이아웃 유지 (상단바/프리뷰/하단 독). 버튼 위치 그대로 = 화면 아래 */
-body.landscape .topbar{padding-right:calc(16px + env(safe-area-inset-right,0px));padding-left:calc(16px + env(safe-area-inset-left,0px))}
-body.landscape .dock{padding-left:calc(14px + env(safe-area-inset-left,0px));padding-right:calc(14px + env(safe-area-inset-right,0px))}
-
-/* ===== 아이폰 기본 카메라 방식: 회전잠금 중 기기를 옆으로 들면 버튼/글자만 회전 ===== */
-/* (가속도계로 감지. body.ui-rot일 때만 적용 → 일반 세로/가로엔 영향 없음) */
-.lg-btn .ic, #lastThumb, .zoom-quick, .mode-capsule, .preset .pn, .rec-badge {
-  transition: transform .3s cubic-bezier(.2,.7,.3,1); }
-body.ui-rot .lg-btn .ic,
-body.ui-rot #lastThumb,
-body.ui-rot .zoom-quick,
-body.ui-rot .mode-capsule,
-body.ui-rot .rec-badge { transform: rotate(var(--ui-rot, 0deg)); }
-body.ui-rot .preset .pn { transform: rotate(var(--ui-rot, 0deg)); }
-body.ui-rot .preset.active .pn { transform: rotate(var(--ui-rot, 0deg)) scale(1.05); }
+/* ===== 가로 = 세로 레이아웃을 통째로 90° 회전(세로 잠금) ===== */
+#rotor{position:fixed;inset:0}
+@media (orientation:landscape){
+  html,body{overflow:hidden}
+  /* 세로 치수 박스를 화면 가운데(음수마진)에 두고 회전 → 세로 UI가 가로 화면을 채움 */
+  #rotor{position:fixed;inset:auto;top:50%;left:50%;
+    width:100vh;height:100vw;margin-left:-50vh;margin-top:-50vw;
+    transform:rotate(var(--rot,-90deg));transform-origin:center center}
+  /* 조상 transform 하에서 backdrop-filter가 깨지므로 가로에선 솔리드 반투명 폴백 */
+  .lg,.preset .pn,.sheet-card,.toast,.g-tag{
+    -webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  .lg{background:rgba(40,40,42,.82)}
+  .preset .pn{background:rgba(64,64,66,.88)}
+  .preset.active .pn{background:#fff}
+  .sheet-card{background:rgba(22,22,24,.97)}
+  .toast{background:rgba(28,28,30,.96)}
+}
 
 .filter-bar{display:flex;flex:0 0 auto;gap:8px;overflow-x:auto;max-width:100%;padding:6px 10px;scrollbar-width:none}
 .filter-bar::-webkit-scrollbar{display:none}

@@ -17,7 +17,7 @@
   const DEFAULT_SETTINGS = { date: true, sound: true, vibrate: true, mirror: true, mic: true, lofi: 'vintage' };
 
   // 촬영 비율 — 세로 3:4, 화면을 가로로 돌리면 가로 4:3 (가로:세로 = w/h)
-  function aspectR() { return state.landscape ? 4 / 3 : 3 / 4; }
+  function aspectR() { return 3 / 4; }  // 레이아웃은 항상 세로(가로는 #rotor를 통째로 90° 회전)
   const ZMIN = 1, ZMAX = 10, ZSP = 42; // 줌 범위 + 다이얼 1× 당 픽셀
 
   // ----- 상태 -----
@@ -28,6 +28,7 @@
     preset: PRESETS.find(p => p.id === 'ccd') || PRESETS[0],
     mode: 'photo',
     landscape: false,
+    rotDeg: -90,
     zoom: 1,
     frame: 0,
     camError: null,
@@ -136,15 +137,17 @@
     if (arc) showZoomArc();
   }
 
-  // 버튼/레이아웃은 그대로 두고, 프리뷰만 남는 공간(뷰포트 − 상단바 − 독)에 현재 비율로 맞춤
+  // 프리뷰를 #rotor의 '논리' 치수(transform 전)에 세로 비율로 맞춤. 가로면 #rotor가 통째로 회전됨
   function fitViewfinder() {
     const topbar = document.querySelector('.topbar');
     const dock = document.querySelector('.dock');
+    const root = document.getElementById('rotor');
     if (!topbar || !dock) return;
     const R = aspectR();
-    // 세로·가로 동일 레이아웃(상단바/프리뷰/하단 독) → 같은 방식으로 프리뷰만 맞춤
-    const availW = window.innerWidth - 8;
-    const availH = window.innerHeight - topbar.offsetHeight - dock.offsetHeight - 8;
+    const W = root ? root.clientWidth : window.innerWidth;
+    const H = root ? root.clientHeight : window.innerHeight;
+    const availW = W - 8;
+    const availH = H - topbar.offsetHeight - dock.offsetHeight - 8;
     if (availW <= 0 || availH <= 0) return;
     let w, h;
     if (availW / availH > R) { h = availH; w = h * R; } else { w = availW; h = w / R; }
@@ -155,42 +158,16 @@
   }
 
   function updateOrientation() {
-    const ls = window.innerWidth > window.innerHeight;
-    if (ls !== state.landscape) {
-      state.landscape = ls;
-      document.body.classList.toggle('landscape', ls);
-      kitKey = null;
-    }
+    state.landscape = window.innerWidth > window.innerHeight;
+    const ang = (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.angle === 'number')
+      ? screen.orientation.angle : (window.orientation || 0);
+    state.rotDeg = (ang === 270 || ang === -90) ? 90 : -90;   // 가로 두 방향 대응
+    document.documentElement.style.setProperty('--rot', state.rotDeg + 'deg');
+    kitKey = null;
     fitViewfinder();
+    requestAnimationFrame(fitViewfinder);
   }
 
-  // ===== 아이폰 기본 카메라 방식: 회전잠금 중 기기를 옆으로 들면 버튼/글자만 회전 (가속도계) =====
-  let uiRot = 0;
-  function setUiRot(r) {
-    if (r === uiRot) return;
-    uiRot = r;
-    document.documentElement.style.setProperty('--ui-rot', r + 'deg');
-    document.body.classList.toggle('ui-rot', r !== 0);
-  }
-  function onTilt(e) {
-    const g = e.gamma; if (g == null) return;
-    const viewportLandscape = window.innerWidth > window.innerHeight;
-    let r = 0;
-    if (!viewportLandscape) {            // 화면은 세로(회전잠금)인데 기기를 옆으로 → 버튼만 회전
-      if (g > 35) r = 90;
-      else if (g < -35) r = -90;
-    }
-    setUiRot(r);
-  }
-  async function enableTilt() {
-    try {
-      if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        const res = await DeviceOrientationEvent.requestPermission();   // iOS: 제스처에서 권한
-        if (res !== 'granted') return;
-      }
-      if (window.DeviceOrientationEvent) window.addEventListener('deviceorientation', onTilt);
-    } catch (e) {}
-  }
   function rotateCanvas(src, deg) {
     const c = document.createElement('canvas');
     if (Math.abs(deg) === 90) { c.width = src.height; c.height = src.width; } else { c.width = src.width; c.height = src.height; }
@@ -437,7 +414,7 @@
       const fx = fc.getContext('2d'); fx.fillStyle = '#f6f4ec'; fx.fillRect(0, 0, fc.width, fc.height);
       fx.drawImage(canvas, pad, pad); out = fc;
     }
-    if (uiRot) out = rotateCanvas(out, uiRot);   // 기기를 옆으로 들고 찍으면 사진도 회전(가로 저장)
+    if (state.landscape) out = rotateCanvas(out, state.rotDeg);   // 가로(회전)면 사진도 회전해 가로로 저장
     return out;
   }
 
@@ -485,10 +462,10 @@
     if (!VIDEO_OK) { alert('이 브라우저는 영상 녹화를 지원하지 않아요.'); return; }
     await ensureAudio();
     const crop = computeCrop(); if (!crop.vw) return;
-    const lf = LOFI[state.settings.lofi], R = aspectR();
-    const long = lf.vh, short = Math.round(long * 3 / 4);
-    const w = R >= 1 ? long : short, h = R >= 1 ? short : long;
-    recordCanvas.width = w; recordCanvas.height = h;
+    const lf = LOFI[state.settings.lofi];
+    const ph = lf.vh, pw = Math.round(ph * 3 / 4);   // 세로 프레임
+    if (state.landscape) { recordCanvas.width = ph; recordCanvas.height = pw; }  // 가로: 스왑+회전
+    else { recordCanvas.width = pw; recordCanvas.height = ph; }
     const rctx = recordCanvas.getContext('2d');
     kitKey = null;
     let frame = 0, lastT = 0;
@@ -496,13 +473,21 @@
     const loop = (t) => {
       if (!recording) return;
       rafId = requestAnimationFrame(loop);
-      if (t - lastT < minDelta) return;   // lf.fps로 스로틀 → 버리는 프레임 안 그림(배터리↓)
+      if (t - lastT < minDelta) return;   // lf.fps로 스로틀(배터리↓)
       lastT = t;
       const c = computeCrop();
-      if (c.vw) drawFrame(rctx, w, h, state.preset, {
-        crop: c, mirror: state.facing === 'user' && state.settings.mirror,
-        grainMul: lf.grain, frameIndex: frame++, bloom: false,
-      });
+      if (!c.vw) return;
+      const opts = { crop: c, mirror: state.facing === 'user' && state.settings.mirror, grainMul: lf.grain, frameIndex: frame++, bloom: false };
+      if (state.landscape) {
+        rctx.save();
+        rctx.translate(recordCanvas.width / 2, recordCanvas.height / 2);
+        rctx.rotate(state.rotDeg * Math.PI / 180);
+        rctx.translate(-pw / 2, -ph / 2);
+        drawFrame(rctx, pw, ph, state.preset, opts);
+        rctx.restore();
+      } else {
+        drawFrame(rctx, pw, ph, state.preset, opts);
+      }
     };
 
     const vstream = recordCanvas.captureStream(lf.fps);
@@ -749,7 +734,6 @@
     const ok = await startCamera();
     if (!ok) { showCamError(state.camError); return; }
     showScreen('camera');
-    enableTilt();           // 기기 기울기 감지(아이폰식 버튼 회전) — 제스처에서 권한 요청
     updateOrientation();
     buildZoomArc();
     applyPreset(state.preset);
